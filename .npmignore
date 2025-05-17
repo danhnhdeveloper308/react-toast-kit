@@ -1,0 +1,30 @@
+# Development files
+.github/
+.vscode/
+src/
+docs/
+node_modules/
+tests/
+examples/
+coverage/
+
+# Config files
+.gitignore
+.eslintrc*
+.prettier*
+tsconfig.json
+postcss.config.js
+tailwind.config.js
+tsup.config.ts
+
+# Test files
+*.test.*
+*.spec.*
+jest.config.*
+
+# Misc
+.DS_Store
+*.log
+.env*
+.editorconfig
+CONTRIBUTING.md

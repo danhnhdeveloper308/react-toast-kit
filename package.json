@@ -1,0 +1,78 @@
+{
+  "name": "react-toast-kit",
+  "version": "1.0.0",
+  "description": "A modern, performant, and theme-aware toast notification library for React applications.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "tsc --noEmit",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run lint && npm run build"
+  },
+  "keywords": [
+    "toast",
+    "notification",
+    "react",
+    "typescript",
+    "framer-motion",
+    "zustand",
+    "tailwind",
+    "react-toast",
+    "toast-notifications",
+    "react-notifications",
+    "nextjs",
+    "next.js"
+  ],
+  "author": "Hoang Danh Nguyen <danhnh.developer@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "framer-motion": "^12.11.3",
+    "zustand": "^5.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "tsup": "^8.0.2",
+    "typescript": "^5.8.3",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0",
+    "framer-motion": ">=10.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danhnhdeveloper308/react-toast-kit"
+  },
+  "homepage": "https://github.com/danhnhdeveloper308/react-toast-kit#readme",
+  "bugs": {
+    "url": "https://github.com/danhnhdeveloper308/react-toast-kit/issues"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "packageManager": "pnpm@9.15.4+sha512.b2dc20e2fc72b3e18848459b37359a32064663e5627a51e4c74b2c29dd8e8e0491483c3abb40789cfd578bf362fb6ba8261b05f0387d76792ed6e23ea3b1b6a0"
+}
