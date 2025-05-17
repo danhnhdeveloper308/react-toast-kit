@@ -46,8 +46,6 @@ const ToastProviderComponent: React.FC<ToastProviderProps> = ({
   const { 
     toasts, 
     removeToast, 
-    pauseToast, 
-    resumeToast, 
     pausedToasts, 
     theme,
     setTheme,
