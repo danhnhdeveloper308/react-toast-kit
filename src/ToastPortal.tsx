@@ -262,7 +262,8 @@ const ToastContainer = memo(({
   onPause,
   onResume,
   defaultAnimation,
-  toastTheme
+  toastTheme,
+  containerClassName
 }: {
   position: ToastPosition,
   toasts: Toast[],
@@ -271,10 +272,11 @@ const ToastContainer = memo(({
   onPause: (id: string) => void,
   onResume: (id: string) => void,
   defaultAnimation: 'slide' | 'fade' | 'bounce' | 'none',
-  toastTheme: 'light' | 'dark'
+  toastTheme: 'light' | 'dark',
+  containerClassName?: string
 }) => (
   <div 
-    className={`fixed flex flex-col z-50 react-toast-container`}
+    className={`fixed flex flex-col z-50 react-toast-container ${containerClassName || ''}`}
     data-position={position}
     style={{ 
       gap: '0.5rem',
@@ -398,6 +400,7 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
           onResume={resumeToast}
           defaultAnimation={defaultAnimation}
           toastTheme={currentTheme as 'light' | 'dark'}
+          containerClassName={containerClassName}
         />
       ))}
     </>
