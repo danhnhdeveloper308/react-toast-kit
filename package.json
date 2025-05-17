@@ -1,6 +1,6 @@
 {
   "name": "react-toast-kit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A modern, performant, and theme-aware toast notification library for React applications.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
