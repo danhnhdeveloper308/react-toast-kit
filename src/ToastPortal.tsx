@@ -35,9 +35,9 @@ interface ToastPortalProps {
 }
 
 // SVG Icon component that renders SVG from string using dangerouslySetInnerHTML
-const SVGIcon: React.FC<{ svgString: string }> = memo(({ svgString }) => (
+const SVGIcon: React.FC<{ svgString: string; className?: string }> = memo(({ svgString, className = '' }) => (
   <span 
-    className="inline-block" 
+    className={`inline-block ${className}`}
     dangerouslySetInnerHTML={{ __html: svgString }} 
   />
 ));
@@ -60,25 +60,37 @@ const ToastItem = memo(({
   position: ToastPosition,
   toastTheme: 'light' | 'dark'
 }) => {
-  // Variant styles
+  // Variant styles - enhanced to better support dark/light themes
   const getVariantClasses = (variant: Toast['variant']): string => {
     const isDark = toastTheme === 'dark';
     
     switch (variant) {
       case 'success':
-        return isDark ? 'bg-green-700 text-white' : 'bg-green-500 text-white';
+        return isDark 
+          ? 'bg-green-700 text-white border border-green-600' 
+          : 'bg-green-500 text-white';
       case 'error':
-        return isDark ? 'bg-red-700 text-white' : 'bg-red-500 text-white';
+        return isDark 
+          ? 'bg-red-700 text-white border border-red-600' 
+          : 'bg-red-500 text-white';
       case 'warning':
-        return isDark ? 'bg-amber-700 text-white' : 'bg-amber-500 text-white';
+        return isDark 
+          ? 'bg-amber-700 text-white border border-amber-600' 
+          : 'bg-amber-500 text-white';
       case 'info':
-        return isDark ? 'bg-blue-700 text-white' : 'bg-blue-500 text-white';
+        return isDark 
+          ? 'bg-blue-700 text-white border border-blue-600' 
+          : 'bg-blue-500 text-white';
       case 'loading':
-        return isDark ? 'bg-gray-700 text-white' : 'bg-gray-500 text-white';
+        return isDark 
+          ? 'bg-gray-700 text-white border border-gray-600' 
+          : 'bg-gray-500 text-white';
       case 'custom':
         return '';
       default:
-        return isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-900 border border-gray-200';
+        return isDark 
+          ? 'bg-gray-800 text-white border border-gray-700' 
+          : 'bg-white text-gray-900 border border-gray-200';
     }
   };
 
@@ -179,6 +191,38 @@ const ToastItem = memo(({
   // Check for iconString property added in toast.ts
   const iconString = (toast as any).iconString;
   
+  // Get icon color based on theme and variant
+  const getIconColor = (): string => {
+    // Return empty string for custom variant to let custom components handle their own styling
+    if (toast.variant === 'custom') return '';
+    
+    // For default variant
+    if (!toast.variant || toast.variant === 'default') {
+      return toastTheme === 'dark' ? 'text-gray-200' : 'text-gray-700';
+    }
+    
+    // For other variants, use white text
+    return 'text-white';
+  };
+
+  // Get progress bar color based on theme
+  const getProgressBarColor = (): string => {
+    return toastTheme === 'dark' ? 'bg-white/30' : 'bg-white/20';
+  };
+
+  // Get close button style based on theme and variant
+  const getCloseButtonClass = (): string => {
+    if (toast.variant === 'custom') return '';
+    
+    if (!toast.variant || toast.variant === 'default') {
+      return toastTheme === 'dark' 
+        ? 'text-gray-400 hover:text-gray-200' 
+        : 'text-gray-500 hover:text-gray-700';
+    }
+    
+    return 'text-white/80 hover:text-white';
+  };
+  
   return (
     <motion.div
       key={toast.id}
@@ -198,6 +242,7 @@ const ToastItem = memo(({
         onMouseLeave={() => onResume(toast.id)}
         onClick={() => toast.dismissOnClick && onDismiss(toast.id)}
         data-variant={toast.variant}
+        data-theme={toastTheme}
         data-testid={`toast-${toast.id}`}
         tabIndex={0}
       >
@@ -210,7 +255,7 @@ const ToastItem = memo(({
               duration: toast.duration / 1000,
               ease: 'linear',
             }}
-            className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 react-toast-progress"
+            className={`absolute bottom-0 left-0 right-0 h-1 ${getProgressBarColor()} react-toast-progress`}
           />
         )}
         
@@ -221,10 +266,10 @@ const ToastItem = memo(({
             <div className="flex items-start">
               {/* Render either custom icon, SVG string icon, or nothing */}
               {toast.icon ? (
-                <div className="flex-shrink-0 mr-3">{toast.icon}</div>
+                <div className={`flex-shrink-0 mr-3 ${getIconColor()}`}>{toast.icon}</div>
               ) : iconString ? (
-                <div className="flex-shrink-0 mr-3">
-                  <SVGIcon svgString={iconString} />
+                <div className={`flex-shrink-0 mr-3 ${getIconColor()}`}>
+                  <SVGIcon svgString={iconString} className={getIconColor()} />
                 </div>
               ) : null}
               
@@ -239,7 +284,7 @@ const ToastItem = memo(({
                     e.stopPropagation();
                     onDismiss(toast.id);
                   }}
-                  className="flex-shrink-0 ml-3 text-white/80 hover:text-white focus:outline-none"
+                  className={`flex-shrink-0 ml-3 focus:outline-none ${getCloseButtonClass()}`}
                   aria-label="Close"
                   data-dismiss="toast"
                 >
@@ -281,6 +326,7 @@ const ToastContainer = memo(({
   <div 
     className={`fixed flex flex-col z-50 react-toast-container ${containerClassName || ''}`}
     data-position={position}
+    data-theme={toastTheme}
     style={{ 
       gap: '0.5rem',
       maxWidth: 'calc(100vw - 2rem)',
@@ -391,9 +437,12 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
   // Don't render anything on the server or if not mounted yet
   if (typeof window === 'undefined' || !isMounted || !portalElement) return null;
   
-  // Determine the current effective theme
+  // Determine the current effective theme based on system preference if set to 'system'
   const currentTheme = theme === 'system' 
-    ? (typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light') 
+    ? (typeof window !== 'undefined' && 
+       (document.documentElement.classList.contains('dark') || 
+        window.matchMedia('(prefers-color-scheme: dark)').matches) 
+         ? 'dark' : 'light') 
     : theme;
   
   // Create portal content

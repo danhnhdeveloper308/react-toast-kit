@@ -2,6 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS Variables for theming */
+:root {
+  /* Background colors */
+  --toast-bg-success: #10b981; /* green-500 */
+  --toast-bg-error: #ef4444; /* red-500 */
+  --toast-bg-warning: #f59e0b; /* amber-500 */
+  --toast-bg-info: #3b82f6; /* blue-500 */
+  --toast-bg-loading: #6b7280; /* gray-500 */
+  --toast-bg-default: white;
+  
+  /* Text colors */
+  --toast-text-success: white;
+  --toast-text-error: white;
+  --toast-text-warning: white;
+  --toast-text-info: white;
+  --toast-text-loading: white;
+  --toast-text-default: #111827; /* gray-900 */
+  
+  /* Border colors */
+  --toast-border-default: #e5e7eb; /* gray-200 */
+  
+  /* Progress bar */
+  --toast-progress-bg: rgba(255, 255, 255, 0.2);
+  
+  /* Close button */
+  --toast-close-default: #6b7280; /* gray-500 */
+  --toast-close-hover: #374151; /* gray-700 */
+}
+
+/* Dark mode variables */
+.dark,
+[data-theme="dark"] {
+  --toast-bg-success: #059669; /* green-700 */
+  --toast-bg-error: #dc2626; /* red-700 */
+  --toast-bg-warning: #d97706; /* amber-700 */
+  --toast-bg-info: #2563eb; /* blue-700 */
+  --toast-bg-loading: #4b5563; /* gray-700 */
+  --toast-bg-default: #1f2937; /* gray-800 */
+
+  --toast-text-default: white;
+  
+  --toast-border-default: #374151; /* gray-700 */
+
+  --toast-progress-bg: rgba(255, 255, 255, 0.3);
+  
+  --toast-close-default: #9ca3af; /* gray-400 */
+  --toast-close-hover: white;
+}
+
 /* Toast animations */
 @keyframes toast-in-right {
   from {
@@ -59,61 +108,34 @@
 }
 
 .react-toast[data-variant="success"] {
-  background-color: #10b981;
-  color: white;
+  background-color: var(--toast-bg-success);
+  color: var(--toast-text-success);
 }
 
 .react-toast[data-variant="error"] {
-  background-color: #ef4444;
-  color: white;
+  background-color: var(--toast-bg-error);
+  color: var(--toast-text-error);
 }
 
 .react-toast[data-variant="warning"] {
-  background-color: #f59e0b;
-  color: white;
+  background-color: var(--toast-bg-warning);
+  color: var(--toast-text-warning);
 }
 
 .react-toast[data-variant="info"] {
-  background-color: #3b82f6;
-  color: white;
+  background-color: var(--toast-bg-info);
+  color: var(--toast-text-info);
 }
 
 .react-toast[data-variant="loading"] {
-  background-color: #6b7280;
-  color: white;
+  background-color: var(--toast-bg-loading);
+  color: var(--toast-text-loading);
 }
 
 .react-toast[data-variant="default"] {
-  background-color: white;
-  color: #111827;
-  border: 1px solid #e5e7eb;
-}
-
-/* Dark mode support */
-.dark .react-toast[data-variant="success"] {
-  background-color: #059669;
-}
-
-.dark .react-toast[data-variant="error"] {
-  background-color: #dc2626;
-}
-
-.dark .react-toast[data-variant="warning"] {
-  background-color: #d97706;
-}
-
-.dark .react-toast[data-variant="info"] {
-  background-color: #2563eb;
-}
-
-.dark .react-toast[data-variant="loading"] {
-  background-color: #4b5563;
-}
-
-.dark .react-toast[data-variant="default"] {
-  background-color: #1f2937;
-  color: white;
-  border-color: #374151;
+  background-color: var(--toast-bg-default);
+  color: var(--toast-text-default);
+  border: 1px solid var(--toast-border-default);
 }
 
 /* Progress bar */
@@ -123,7 +145,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: var(--toast-progress-bg);
 }
 
 /* Animation for loading spinner */
@@ -156,4 +178,27 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* Fix for toast animations and theme transitions */
+.react-toast {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Custom data-theme attribute for SVG colors */
+.react-toast svg {
+  color: currentColor;
+}
+
+.react-toast[data-theme="dark"] button[data-dismiss="toast"] {
+  color: var(--toast-close-default);
+}
+
+.react-toast[data-theme="dark"] button[data-dismiss="toast"]:hover {
+  color: var(--toast-close-hover);
+}
+
+/* Ensure proper color inheritance for nested elements */
+.react-toast *:not(button, a) {
+  color: inherit;
 }

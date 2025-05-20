@@ -1,4 +1,4 @@
-import { JSX } from 'react';
+import { JSX, useEffect } from 'react';
 import { create } from 'zustand';
 
 export type ToastPosition = 
@@ -10,7 +10,6 @@ export type ToastPosition =
   | 'bottom-left';
 
 export type ToastVariant = 'success' | 'error' | 'info' | 'warning' | 'default' | 'custom' | 'loading';
-
 export type ToastTheme = 'light' | 'dark' | 'system';
 
 export interface ToastOptions {
@@ -27,7 +26,7 @@ export interface ToastOptions {
   icon?: JSX.Element;
   component?: JSX.Element;
   onDismiss?: (id: string) => void;
-  // New options
+  // Styling options
   className?: string;         // Additional CSS class for custom styling
   style?: React.CSSProperties; // Inline styles for the toast
   animation?: 'slide' | 'fade' | 'bounce' | 'none'; // Animation style
@@ -53,6 +52,7 @@ interface ToastState {
   toasts: Toast[];
   maxToasts: number;
   theme: ToastTheme;
+  effectiveTheme: 'light' | 'dark'; // The actual theme (light/dark) after resolving system preference
   pausedToasts: Set<string>;
   addToast: (toast: Toast) => string;
   removeToast: (id: string) => void;
@@ -62,6 +62,7 @@ interface ToastState {
   clearAllToasts: () => void;
   setTheme: (theme: ToastTheme) => void;
   setMaxToasts: (max: number) => void;
+  updateEffectiveTheme: () => void;
 }
 
 // Default values - these can be overridden by ToastProvider props
@@ -69,6 +70,17 @@ const DEFAULT_DURATION = 4000;
 const DEFAULT_POSITION: ToastPosition = 'top-right';
 const DEFAULT_THEME: ToastTheme = 'system';
 const DEFAULT_MAX_TOASTS = 3;
+
+// Function to detect system dark mode preference
+const getSystemTheme = (): 'light' | 'dark' => {
+  if (typeof window === 'undefined') return 'light';
+  
+  // Check for dark mode class on document (for frameworks like Next.js with className)
+  if (document.documentElement.classList.contains('dark')) return 'dark';
+  
+  // Check for prefers-color-scheme media query
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
 
 // Function to get configured values from ToastProvider or fallback to defaults
 const getConfigValue = <T,>(key: string, defaultValue: T): T => {
@@ -89,6 +101,7 @@ export const useToastStore = create<ToastState>((set, get) => ({
   toasts: [],
   maxToasts: DEFAULT_MAX_TOASTS,
   theme: DEFAULT_THEME,
+  effectiveTheme: getSystemTheme(),
   pausedToasts: new Set<string>(),
   
   addToast: (toast) => {
@@ -155,10 +168,48 @@ export const useToastStore = create<ToastState>((set, get) => ({
     set({ toasts: [], pausedToasts: new Set() });
   },
   
-  setTheme: (theme) => set({ theme }),
+  setTheme: (theme) => {
+    set({ theme });
+    get().updateEffectiveTheme();
+  },
   
-  setMaxToasts: (max) => set({ maxToasts: max })
+  setMaxToasts: (max) => set({ maxToasts: max }),
+  
+  updateEffectiveTheme: () => {
+    const { theme } = get();
+    const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;
+    set({ effectiveTheme });
+    
+    // Set data-theme attribute on document for CSS variable targeting
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-toast-theme', effectiveTheme);
+    }
+  }
 }));
+
+// Set up media query listener to respond to system theme changes
+if (typeof window !== 'undefined') {
+  const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  
+  // Initial update
+  useToastStore.getState().updateEffectiveTheme();
+  
+  // Listen for changes
+  if (darkModeMediaQuery.addEventListener) {
+    darkModeMediaQuery.addEventListener('change', () => {
+      if (useToastStore.getState().theme === 'system') {
+        useToastStore.getState().updateEffectiveTheme();
+      }
+    });
+  } else if ('matchMedia' in window) {
+    // Fallback for older browsers
+    window.matchMedia('(prefers-color-scheme: dark)').addListener(() => {
+      if (useToastStore.getState().theme === 'system') {
+        useToastStore.getState().updateEffectiveTheme();
+      }
+    });
+  }
+}
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -231,7 +282,6 @@ const createToast = (options: ToastOptions | string): string => {
       (toastOptions as any).iconString = iconStrings[variant as keyof typeof iconStrings];
     }
   }
-
   // For loading variant, set infinite duration by default if not specified
   if (variant === 'loading' && toastOptions.duration === undefined) {
     toastOptions.duration = 0; // Infinite
@@ -275,13 +325,11 @@ const createVariantToast = (variant: ToastVariant) => (options: ToastOptions | s
 };
 
 export const toast = ((options: ToastOptions | string) => createToast(options)) as ToastHandler;
-
 toast.success = createVariantToast('success');
 toast.error = createVariantToast('error');
 toast.warning = createVariantToast('warning');
 toast.info = createVariantToast('info');
 toast.loading = createVariantToast('loading');
-
 toast.custom = (component: JSX.Element, options: Omit<ToastOptions, 'component'> = {}) => {
   return createToast({ ...options, component, variant: 'custom' });
 };
@@ -300,7 +348,6 @@ toast.promise = async <T>(
     variant: 'loading',
     duration: 0, // Use infinite duration for loading toasts
   });
-
   try {
     const data = await promise;
     
@@ -364,3 +411,27 @@ toast.dismiss = (id?: string) => {
 toast.clearAll = () => {
   useToastStore.getState().clearAllToasts();
 };
+
+// Custom hook for detecting theme changes
+export function useThemeDetector() {
+  useEffect(() => {
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handler = () => {
+      if (useToastStore.getState().theme === 'system') {
+        useToastStore.getState().updateEffectiveTheme();
+      }
+    };
+    
+    darkModeMediaQuery.addEventListener('change', handler);
+    
+    // Initial update
+    handler();
+    
+    return () => {
+      darkModeMediaQuery.removeEventListener('change', handler);
+    };
+  }, []);
+  
+  return useToastStore(state => state.effectiveTheme);
+}

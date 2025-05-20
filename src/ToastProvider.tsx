@@ -48,8 +48,10 @@ const ToastProviderComponent: React.FC<ToastProviderProps> = ({
     removeToast, 
     pausedToasts, 
     theme,
+    effectiveTheme,
     setTheme,
-    setMaxToasts
+    setMaxToasts,
+    updateEffectiveTheme
   } = useToastStore();
 
   // Initialize store with props values on first render
@@ -60,6 +62,9 @@ const ToastProviderComponent: React.FC<ToastProviderProps> = ({
     // Only set theme if current theme is 'system' (default)
     if (theme === 'system' && defaultTheme !== 'system') {
       setTheme(defaultTheme);
+    } else {
+      // Ensure we update the effective theme
+      updateEffectiveTheme();
     }
     
     // These values are used in createToast function in toast.ts
@@ -78,29 +83,20 @@ const ToastProviderComponent: React.FC<ToastProviderProps> = ({
       };
     }
   }, [defaultDuration, defaultPosition, defaultTheme, defaultAnimation, maxToasts, setMaxToasts, setTheme, theme, 
-      topOffset, bottomOffset, leftOffset, rightOffset, toastClassName]);
+      topOffset, bottomOffset, leftOffset, rightOffset, toastClassName, updateEffectiveTheme]);
 
-  // System theme detection
+  // System theme detection and CSS variables update
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = () => {
-        document.documentElement.classList.toggle('dark', mediaQuery.matches);
-      };
-      
-      // Set initial value
-      handleChange();
-      
-      // Listen for changes
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    } else {
-      document.documentElement.classList.toggle('dark', theme === 'dark');
-    }
-  }, [theme]);
 
+    // Apply the effective theme to the document as a data attribute
+    document.documentElement.setAttribute('data-toast-theme', effectiveTheme);
+    
+    // Synchronize with document dark mode class for frameworks like Tailwind
+    document.documentElement.classList.toggle('dark', effectiveTheme === 'dark');
+    
+  }, [effectiveTheme]);
+  
   // Auto-dismiss timers
   useEffect(() => {
     const timers = toasts.map((toast) => {
