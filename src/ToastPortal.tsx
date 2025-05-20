@@ -10,6 +10,9 @@ import type { Toast, ToastPosition } from './toast';
  */
 const findHighestZIndex = (): number => {
   let highestZ = 9000; // Default high value
+  
+  if (typeof window === 'undefined') return highestZ;
+  
   const elements = document.getElementsByTagName('*');
   
   for (let i = 0; i < elements.length; i++) {
@@ -323,23 +326,31 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
   // Create ref for portal container
   const [portalElement, setPortalElement] = useState<HTMLDivElement | null>(null);
   
-  // Initialize when component mounts
+  // Initialize when component mounts - only runs on client
   useEffect(() => {
-    const div = document.createElement('div');
-    div.id = 'react-toast-kit-portal';
-    div.style.position = 'fixed';
-    div.style.top = '0';
-    div.style.left = '0';
-    div.style.width = '0';
-    div.style.height = '0';
-    div.style.zIndex = findHighestZIndex().toString();
-    document.body.appendChild(div);
+    // Create portal element if one doesn't already exist
+    let div = document.getElementById('react-toast-kit-portal') as HTMLDivElement;
+    
+    if (!div) {
+      div = document.createElement('div');
+      div.id = 'react-toast-kit-portal';
+      div.style.position = 'fixed';
+      div.style.top = '0';
+      div.style.left = '0';
+      div.style.width = '0';
+      div.style.height = '0';
+      div.style.zIndex = findHighestZIndex().toString();
+      document.body.appendChild(div);
+    }
     
     setPortalElement(div);
     setIsMounted(true);
     
     return () => {
-      document.body.removeChild(div);
+      // Only remove if we created it
+      if (div && div.parentNode && !document.getElementById('react-toast-kit-portal-static')) {
+        document.body.removeChild(div);
+      }
     };
   }, []);
   
@@ -376,10 +387,10 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
         return { top: `${topOffset}px`, right: `${rightOffset}px` };
     }
   };
-
+  
   // Don't render anything on the server or if not mounted yet
-  if (!isMounted || !portalElement) return null;
-
+  if (typeof window === 'undefined' || !isMounted || !portalElement) return null;
+  
   // Determine the current effective theme
   const currentTheme = theme === 'system' 
     ? (typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light') 

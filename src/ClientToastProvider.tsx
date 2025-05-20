@@ -2,7 +2,7 @@
 
 import { ToastProvider } from './ToastProvider';
 import { ToastPosition, ToastTheme } from './toast';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface ClientToastProviderProps {
   children?: React.ReactNode;
@@ -30,5 +30,13 @@ interface ClientToastProviderProps {
 
 // Next.js specific client component wrapper with 'use client' directive
 export function ClientToastProvider(props: ClientToastProviderProps) {
-  return <ToastProvider {...props} />;
+  // Use state to track if we're mounted on the client
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Only show the toast provider after client-side hydration is complete
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  return isMounted ? <ToastProvider {...props} /> : <>{props.children}</>;
 }
