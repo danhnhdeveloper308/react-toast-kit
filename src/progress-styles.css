@@ -1,0 +1,327 @@
+/* Progress Bar Styles for React Toast Kit */
+
+/* Base progress container */
+.react-toast-progress {
+  position: absolute;
+  background-color: var(--toast-progress-bg);
+  overflow: hidden;
+}
+
+/* Default positions */
+.react-toast-progress {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+/* Position variations */
+.react-toast[data-progress-position="top"] .react-toast-progress {
+  top: 0;
+  bottom: auto;
+}
+
+.react-toast[data-progress-position="left"] .react-toast-progress {
+  top: 0;
+  bottom: 0;
+  right: auto;
+  width: 3px;
+  height: auto;
+}
+
+.react-toast[data-progress-position="right"] .react-toast-progress {
+  top: 0;
+  bottom: 0;
+  left: auto;
+  width: 3px;
+  height: auto;
+}
+
+/* Base progress fill */
+.react-toast-progress-fill {
+  height: 100%;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.5);
+  transition-property: width, height;
+}
+
+/* Style: DEFAULT */
+.react-toast-progress.default .react-toast-progress-fill {
+  background: var(--progress-default);
+}
+
+/* Style: FANCY */
+.react-toast-progress.fancy .react-toast-progress-fill {
+  background: linear-gradient(90deg, #f59e0b, #ef4444, #3b82f6, #10b981);
+  background-size: 300% 100%;
+  animation: shimmer 2s linear infinite;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* Style: GRADIENT-WAVE */
+.react-toast-progress.gradient-wave .react-toast-progress-fill {
+  background: linear-gradient(90deg, 
+    rgba(79, 70, 229, 1) 0%, 
+    rgba(168, 85, 247, 0.8) 50%, 
+    rgba(236, 72, 153, 1) 100%);
+  background-size: 200% 100%;
+  animation: wave-shift 2s linear infinite;
+}
+
+/* Style: PULSE */
+.react-toast-progress.pulse .react-toast-progress-fill {
+  background: var(--progress-default);
+  animation: pulse-effect 1s ease-in-out infinite alternate;
+}
+
+/* Style: PARTICLES */
+.react-toast-progress.particles .react-toast-progress-fill {
+  background: rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.react-toast-progress.particles .react-toast-progress-fill::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255,255,255,0.3) 1px, transparent 1px);
+  background-size: 4px 4px, 6px 6px, 8px 8px;
+  background-position: 0 0, 2px 2px, 4px 0;
+  animation: particle-move 1s linear infinite;
+}
+
+/* Style: LIQUID - with wavy liquid motion */
+.react-toast-progress.liquid .react-toast-progress-fill {
+  background: var(--progress-default);
+  height: 6px;
+  margin-bottom: -3px;
+  border-radius: 0 3px 3px 0;
+  position: relative;
+}
+
+.react-toast-progress.liquid .react-toast-progress-fill::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 10px;
+  background: var(--progress-default);
+  border-radius: 3px;
+  animation: liquid-drip 2s ease-in-out infinite;
+}
+
+/* Style: 3D - renamed to three-d for CSS compliance */
+.react-toast-progress.three-d .react-toast-progress-fill {
+  background: linear-gradient(to bottom, 
+    rgba(255, 255, 255, 0.8),
+    var(--progress-default) 30%, 
+    rgba(0, 0, 0, 0.2) 100%);
+  height: 6px;
+  margin-bottom: -3px;
+  box-shadow: 
+    0 2px 3px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  border-radius: 0 2px 2px 0;
+}
+
+/* Style: DASHED */
+.react-toast-progress.dashed .react-toast-progress-fill {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--progress-default) 0px,
+    var(--progress-default) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  background-size: 12px 100%;
+  animation: dash-move 1s linear infinite;
+}
+
+/* Style: GLOW */
+.react-toast-progress.glow .react-toast-progress-fill {
+  background: var(--progress-default);
+  box-shadow: 
+    0 0 5px var(--progress-default),
+    0 0 10px var(--progress-default),
+    0 0 15px var(--progress-default);
+  animation: glow-pulse 1.5s ease-in-out infinite alternate;
+}
+
+/* Style: RAINBOW */
+.react-toast-progress.rainbow .react-toast-progress-fill {
+  background-image: linear-gradient(
+    90deg, 
+    #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3
+  );
+  background-size: 200% 100%;
+  animation: rainbow-shift 2s linear infinite;
+}
+
+/* Style: DATA-FLOW */
+.react-toast-progress.data-flow .react-toast-progress-fill {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--progress-default) 20%,
+    var(--progress-default) 80%,
+    transparent 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.react-toast-progress.data-flow .react-toast-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(
+      90deg,
+      transparent, transparent 30%,
+      rgba(255, 255, 255, 0.6) 50%,
+      transparent 70%, transparent
+    );
+  background-size: 50% 100%;
+  animation: data-pulse 1.5s linear infinite;
+}
+
+/* Style: STEP-PROGRESS */
+.react-toast-progress.step-progress .react-toast-progress-fill {
+  background-color: transparent;
+  background-image: 
+    linear-gradient(90deg, var(--progress-default) 70%, transparent 0),
+    linear-gradient(90deg, var(--progress-default) 70%, transparent 0),
+    linear-gradient(90deg, var(--progress-default) 70%, transparent 0);
+  background-size: 16.6% 100%;
+  background-repeat: repeat-x;
+  animation: step-move 3s linear infinite;
+}
+
+/* Animations */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes wave-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes pulse-effect {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+@keyframes particle-move {
+  from { background-position: 0 0, 2px 2px, 4px 0; }
+  to { background-position: -12px 0, -10px 2px, -8px 0; }
+}
+
+@keyframes liquid-drip {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px) scale(1.2, 0.8); }
+}
+
+@keyframes dash-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 12px 0; }
+}
+
+@keyframes glow-pulse {
+  0% { opacity: 0.7; filter: brightness(1); }
+  100% { opacity: 1; filter: brightness(1.5); }
+}
+
+@keyframes rainbow-shift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes data-pulse {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes step-move {
+  0% { background-position: 0 0, 33.3% 0, 66.6% 0; }
+  100% { background-position: 16.6% 0, 50% 0, 83.3% 0; }
+}
+
+/* Variant-specific adjustments */
+.react-toast[data-variant="success"] .react-toast-progress-fill {
+  background-color: var(--progress-success);
+}
+
+.react-toast[data-variant="error"] .react-toast-progress-fill {
+  background-color: var(--progress-error);
+}
+
+.react-toast[data-variant="warning"] .react-toast-progress-fill {
+  background-color: var(--progress-warning);
+}
+
+.react-toast[data-variant="info"] .react-toast-progress-fill {
+  background-color: var(--progress-info);
+}
+
+.react-toast[data-variant="loading"] .react-toast-progress-fill {
+  background-color: var(--progress-loading);
+}
+
+/* Custom progress position adjustments for vertical bars */
+.react-toast[data-progress-position="left"] .react-toast-progress.fancy .react-toast-progress-fill,
+.react-toast[data-progress-position="right"] .react-toast-progress.fancy .react-toast-progress-fill {
+  background: linear-gradient(180deg, #f59e0b, #ef4444, #3b82f6, #10b981);
+  background-size: 100% 300%;
+}
+
+.react-toast[data-progress-position="left"] .react-toast-progress.gradient-wave .react-toast-progress-fill,
+.react-toast[data-progress-position="right"] .react-toast-progress.gradient-wave .react-toast-progress-fill {
+  background: linear-gradient(180deg, 
+    rgba(79, 70, 229, 1) 0%, 
+    rgba(168, 85, 247, 0.8) 50%, 
+    rgba(236, 72, 153, 1) 100%);
+  background-size: 100% 200%;
+}
+
+.react-toast[data-progress-position="left"] .react-toast-progress.rainbow .react-toast-progress-fill,
+.react-toast[data-progress-position="right"] .react-toast-progress.rainbow .react-toast-progress-fill {
+  background-image: linear-gradient(
+    180deg, 
+    #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3
+  );
+  background-size: 100% 200%;
+}
+
+/* Media queries for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .react-toast-progress-fill {
+    transition: none !important;
+  }
+  
+  .react-toast-progress-fill,
+  .react-toast-progress.fancy .react-toast-progress-fill,
+  .react-toast-progress.gradient-wave .react-toast-progress-fill,
+  .react-toast-progress.pulse .react-toast-progress-fill,
+  .react-toast-progress.particles .react-toast-progress-fill::before,
+  .react-toast-progress.liquid .react-toast-progress-fill::before,
+  .react-toast-progress.glow .react-toast-progress-fill,
+  .react-toast-progress.rainbow .react-toast-progress-fill,
+  .react-toast-progress.data-flow .react-toast-progress-fill::after,
+  .react-toast-progress.step-progress .react-toast-progress-fill {
+    animation: none !important;
+  }
+}

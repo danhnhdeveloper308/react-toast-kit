@@ -1,306 +1,340 @@
-# React Toast Kit
+# React Toast Kit 🍞
 
-A modern, performant, and theme-aware toast notification library for React applications.
+A modern, accessible toast notification system for React applications with **automatic CSS injection** - no manual CSS imports required!
 
-![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)
-![React](https://img.shields.io/badge/React-17%2B-blue)
-![Bundle Size](https://img.shields.io/badge/Bundle%20Size-Tiny-green)
-![License](https://img.shields.io/npm/l/react-toast-kit)
+## ✨ Features
 
-## Features
+- 🎨 **Auto CSS Injection** - No need to manually import CSS files
+- 🚀 **Zero Configuration** - Works out of the box
+- 🎯 **TypeScript First** - Full type safety
+- 📱 **Responsive** - Mobile-friendly design
+- ♿ **Accessible** - ARIA compliant
+- 🎭 **Multiple Themes** - Light, dark, and system theme support
+- 🎨 **Visual Styles** - Glass, gradient, neon, retro, and more
+- ⚡ **Performance Optimized** - Tree-shakeable and lightweight
+- 🔧 **Customizable** - Extensive customization options
+- 🎪 **Rich Animations** - Slide, fade, bounce, flip, zoom effects
 
-- 🚀 **High Performance**: Built with performance in mind using React, Framer Motion, and Zustand
-- 🎭 **Theme Support**: Supports light and dark mode with system preference detection
-- 🌈 **Multiple Animation Types**: Choose from slide, fade, bounce, or disable animations entirely
-- ⏳ **Loading Toasts**: Built-in support for loading states and promise handling
-- 🧩 **Flexible API**: Simple function calls or object-based configuration
-- 📱 **Responsive**: Works great on mobile and desktop
-- 🔄 **Promise Integration**: Built-in promise handling for async operations
-- ♿ **Accessible**: ARIA attributes and screen reader announcements
-- 🔧 **Customizable**: Easy to customize appearance and behavior
-- 📦 **Small Bundle Size**: Minimal dependencies and tree-shakeable with tsup
-- 🖥️ **Framework Agnostic**: Works with Next.js (App Router & Pages Router), Create React App, Vite, etc.
-- 🔍 **TypeScript Support**: Built with TypeScript for better developer experience
-- 🎛️ **Sticky Element Support**: Automatically adjusts position to avoid sticky headers and footers
+## 🚀 Quick Start
 
-## Installation
+### Installation
 
 ```bash
-npm install react-toast-kit
+npm install react-toast-kit framer-motion
 # or
-yarn add react-toast-kit
+yarn add react-toast-kit framer-motion
 # or
-pnpm add react-toast-kit
+pnpm add react-toast-kit framer-motion
 ```
 
-## Quick Start
+### Basic Usage
 
-```jsx
-import { ToastProvider, toast } from 'react-toast-kit';
+**No CSS import needed!** The CSS is automatically injected when you import the library.
 
-// Wrap your app with the ToastProvider
+```tsx
+import { toast, ToastProvider } from 'react-toast-kit';
+// CSS is automatically injected - no manual import required! ✨
+
 function App() {
   return (
-    <ToastProvider>
-      <MyComponent />
-    </ToastProvider>
+    <>
+      <ToastProvider />
+      <button onClick={() => toast('Hello World!')}>
+        Show Toast
+      </button>
+    </>
   );
 }
-
-// Use the toast function anywhere in your components
-function MyComponent() {
-  const showToast = () => {
-    toast.success('Successfully saved!');
-  };
-
-  return <button onClick={showToast}>Save</button>;
-}
 ```
 
-## Toast Types
+### Next.js App Router (Recommended)
 
-```jsx
-toast('Default toast message');
-toast.success('Successfully saved!');
-toast.error('Something went wrong!');
-toast.warning('Please be careful!');
-toast.info('Here is some information.');
-toast.loading('Processing your request...');
+For Next.js 13+ with App Router, use the client-specific import:
 
-// With more options
-toast.success({
-  title: 'Success!',
-  description: 'Data has been saved successfully.',
-  duration: 5000,
-  position: 'top-right'
-});
-```
+```tsx
+// app/layout.tsx
+import { ToastProvider } from 'react-toast-kit/nextjs/client';
+// CSS automatically injected ✨
 
-## Promise Support
-
-```jsx
-const promise = saveData();
-
-toast.promise(promise, {
-  loading: 'Saving your data...',
-  success: (data) => `Successfully saved ${data.items.length} items!`,
-  error: (err) => `Error: ${err.message}`
-});
-```
-
-## Custom Components
-
-```jsx
-toast.custom(
-  <div className="flex items-center bg-gradient-to-r from-purple-500 to-indigo-500 p-2 rounded">
-    <div>🚀</div>
-    <div className="ml-2">
-      <div className="font-bold">Custom Toast</div>
-      <div className="text-sm">This is a fully custom toast component!</div>
-    </div>
-  </div>
-);
-```
-
-## Configuration
-
-### Provider Configuration
-
-```jsx
-<ToastProvider
-  defaultDuration={4000}
-  defaultPosition="top-right"
-  defaultTheme="system"
-  defaultAnimation="slide"
-  maxToasts={3}
-  // Support for sticky headers and footers
-  topOffset={64} // Adjust if you have a sticky header (height in pixels)
-  bottomOffset={48} // Adjust if you have a sticky footer (height in pixels)
-  leftOffset={16} // Distance from left edge in pixels
-  rightOffset={16} // Distance from right edge in pixels
-  // Accessibility
-  enableAccessibleAnnouncements={true}
-  // Styling
-  containerClassName="my-toast-container"
-  toastClassName="my-toast"
->
-  <App />
-</ToastProvider>
-```
-
-### Toast Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `id` | string | auto-generated | Unique identifier for the toast |
-| `title` | string | - | Toast title |
-| `description` | string | - | Toast description |
-| `variant` | 'success' \| 'error' \| 'warning' \| 'info' \| 'loading' \| 'default' \| 'custom' | 'default' | Type of toast |
-| `duration` | number | 4000 | Duration in milliseconds |
-| `position` | 'top-right' \| 'top-center' \| 'top-left' \| 'bottom-right' \| 'bottom-center' \| 'bottom-left' | 'top-right' | Position of the toast |
-| `dismissible` | boolean | true | Whether the toast can be dismissed with a close button |
-| `pauseOnHover` | boolean | true | Whether to pause the timer when hovering over the toast |
-| `dismissOnClick` | boolean | false | Whether to dismiss the toast when clicking on it |
-| `theme` | 'light' \| 'dark' \| 'system' | 'system' | Toast theme |
-| `icon` | ReactNode | - | Custom icon component |
-| `component` | ReactNode | - | Custom toast component (for `toast.custom()`) |
-| `onDismiss` | (id: string) => void | - | Callback function when toast is dismissed |
-| `className` | string | - | Additional CSS class for styling |
-| `style` | React.CSSProperties | - | Inline styles for the toast |
-| `animation` | 'slide' \| 'fade' \| 'bounce' \| 'none' | 'slide' | Animation style |
-
-## Sticky Header and Footer Support
-
-React Toast Kit includes support for applications with fixed or sticky headers and footers. You can adjust the positioning of toasts to ensure they don't overlap with these elements:
-
-```jsx
-<ToastProvider
-  // Offset from top edge - set this to your header height
-  topOffset={64}
-  
-  // Offset from bottom edge - set this to your footer height
-  bottomOffset={48}
-  
-  // Horizontal offsets if needed
-  leftOffset={16}
-  rightOffset={16}
->
-  <App />
-</ToastProvider>
-```
-
-This ensures that:
-- Top-positioned toasts (top-left, top-center, top-right) will appear below your sticky header
-- Bottom-positioned toasts (bottom-left, bottom-center, bottom-right) will appear above your sticky footer
-
-## Animation Options
-
-React Toast Kit supports multiple animation styles:
-
-```jsx
-<ToastProvider defaultAnimation="bounce">
-  <App />
-</ToastProvider>
-
-// Or at the individual toast level
-toast.success({
-  title: 'Success!',
-  description: 'Action completed',
-  animation: 'fade'
-});
-```
-
-Available animations:
-- `slide` (default): Slides in from the edge
-- `fade`: Simple fade in/out
-- `bounce`: Bouncy spring animation
-- `none`: No animation (instant appearance)
-
-## Hook-based API
-
-For more control, use the `useToast` hook:
-
-```jsx
-import { useToast } from 'react-toast-kit';
-
-function MyComponent() {
-  const { toast, dismiss, theme, setTheme } = useToast();
-  
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div>
-      <button onClick={() => toast.success('Success!')}>Show Toast</button>
-      <button onClick={() => dismiss()}>Dismiss All</button>
-      <button onClick={() => setTheme('dark')}>Dark Mode</button>
-    </div>
+    <html>
+      <body>
+        {children}
+        <ToastProvider />
+      </body>
+    </html>
   );
 }
 ```
 
-## Next.js App Router Support
-
-For Next.js applications using the App Router, use the `ClientToastProvider` component:
-
-```jsx
-// In your layout.js or page.js
+```tsx
+// app/page.tsx or any client component
 'use client';
-
-import { ClientToastProvider } from 'react-toast-kit';
-
-export default function Layout({ children }) {
-  return (
-    <ClientToastProvider
-      topOffset={64} // If you have a sticky header
-      bottomOffset={48} // If you have a sticky footer
-    >
-      {children}
-    </ClientToastProvider>
-  );
-}
-```
-
-## Using in Client Components
-
-```jsx
-'use client';
-
 import { toast } from 'react-toast-kit';
 
-export default function ClientComponent() {
+export default function HomePage() {
   return (
-    <button 
-      onClick={() => toast.success('This works in client components!')}
-    >
-      Show Toast
+    <button onClick={() => toast.success('Welcome!')}>
+      Click me
     </button>
   );
 }
 ```
 
-## TypeScript Support
-
-React Toast Kit is built with TypeScript and exports all the types you need:
+### Next.js Pages Router
 
 ```tsx
-import { toast, type ToastOptions, type ToastPosition } from 'react-toast-kit';
+// pages/_app.tsx
+import { ToastProvider } from 'react-toast-kit';
+// CSS automatically injected ✨
 
-// Example of using the types
-const position: ToastPosition = 'bottom-center';
-const options: ToastOptions = {
-  title: 'Hello TypeScript',
-  position,
-  duration: 5000
-};
-
-toast(options);
+export default function App({ Component, pageProps }) {
+  return (
+    <>
+      <Component {...pageProps} />
+      <ToastProvider />
+    </>
+  );
+}
 ```
 
-## CSS Styles and Tailwind
+## 📚 API Reference
 
-React Toast Kit includes default styling that works out of the box, with or without Tailwind CSS. The library exports a CSS file that you can import:
+### Toast Functions
 
-```jsx
-// Import base styles
-import 'react-toast-kit/dist/styles.css';
+```tsx
+import { toast } from 'react-toast-kit';
+
+// Basic toast
+toast('Hello World!');
+
+// Variant toasts
+toast.success('Success message');
+toast.error('Error message');
+toast.warning('Warning message');
+toast.info('Info message');
+toast.loading('Loading...');
+
+// Custom options
+toast('Custom toast', {
+  duration: 5000,
+  position: 'top-center',
+  theme: 'dark',
+  animation: 'bounce',
+  visualStyle: 'glass'
+});
+
+// Promise handling
+const promise = fetch('/api/data');
+toast.promise(promise, {
+  loading: 'Loading data...',
+  success: 'Data loaded!',
+  error: 'Failed to load data'
+});
+
+// Update existing toast
+const id = toast.loading('Processing...');
+// Later...
+toast.update(id, {
+  variant: 'success',
+  description: 'Done!',
+  duration: 3000
+});
+
+// Dismiss toasts
+toast.dismiss(); // Dismiss all
+toast.dismiss(id); // Dismiss specific toast
 ```
 
-For Tailwind users, the component is built with Tailwind classes, which works automatically with your Tailwind setup.
+### ToastProvider Props
 
-## Browser Support
+```tsx
+<ToastProvider
+  theme="system" // 'light' | 'dark' | 'system'
+  position="top-right" // Default position for all toasts
+  maxToasts={5} // Maximum number of toasts
+  defaultAnimation="slide" // Default animation
+  defaultStyle="solid" // Default visual style
+  topOffset={16} // Offset from top (px)
+  bottomOffset={16} // Offset from bottom (px)
+  leftOffset={16} // Offset from left (px)  
+  rightOffset={16} // Offset from right (px)
+/>
+```
 
-React Toast Kit supports all modern browsers:
-- Chrome/Edge (latest)
-- Firefox (latest)
-- Safari (latest)
-- Opera (latest)
+### Toast Options
 
-## Bundle Size
+```tsx
+interface ToastOptions {
+  // Content
+  title?: string;
+  description?: string;
+  emoji?: string;
+  icon?: JSX.Element;
+  component?: JSX.Element;
+  
+  // Behavior
+  duration?: number; // ms, 0 = persistent
+  dismissible?: boolean;
+  pauseOnHover?: boolean;
+  dismissOnClick?: boolean;
+  swipeToDismiss?: boolean;
+  
+  // Styling
+  variant?: 'success' | 'error' | 'warning' | 'info' | 'loading' | 'default' | 'custom';
+  theme?: 'light' | 'dark' | 'system';
+  position?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
+  animation?: 'slide' | 'fade' | 'bounce' | 'flip' | 'zoom' | 'none';
+  visualStyle?: 'solid' | 'glass' | 'gradient' | 'shimmer' | 'pill' | 'neon' | 'retro';
+  
+  // Advanced
+  className?: string;
+  style?: React.CSSProperties;
+  customAnimation?: CustomAnimation;
+  priority?: 'low' | 'normal' | 'high';
+  stagger?: number; // Delay in ms
+  floating?: boolean;
+  rippleEffect?: boolean;
+  progressBarStyle?: 'default' | 'fancy';
+  
+  // Callbacks
+  onDismiss?: (id: string) => void;
+}
+```
 
-React Toast Kit is built with performance in mind using tsup for optimal bundling, resulting in a minimal footprint for your application.
+## 🎨 Visual Styles
 
-## Contributing
+React Toast Kit includes 7 built-in visual styles:
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- **solid** - Clean, modern solid backgrounds (default)
+- **glass** - Glassmorphism effect with backdrop blur
+- **gradient** - Beautiful gradient backgrounds
+- **shimmer** - Animated shimmer effect
+- **pill** - Rounded pill shape
+- **neon** - Cyberpunk-style neon glow
+- **retro** - Vintage terminal look
 
-## License
+```tsx
+toast('Glass effect!', { visualStyle: 'glass' });
+toast('Neon style!', { visualStyle: 'neon' });
+```
 
-MIT
+## 🎭 Animations
+
+Choose from 6 animation types:
+
+- **slide** - Smooth slide in/out (default)
+- **fade** - Simple fade in/out
+- **bounce** - Spring bounce effect
+- **flip** - 3D flip animation
+- **zoom** - Scale in/out
+- **none** - No animation
+
+```tsx
+toast('Bouncy!', { animation: 'bounce' });
+toast('Smooth fade', { animation: 'fade' });
+```
+
+## 🔧 Manual CSS Import (Optional)
+
+While CSS is automatically injected, you can still manually import it if needed:
+
+```tsx
+// Optional - CSS is auto-injected by default
+import 'react-toast-kit/styles';
+```
+
+Or import as CSS file:
+```css
+@import 'react-toast-kit/dist/styles.css';
+```
+
+## 🎯 Framework Support
+
+### Supported Frameworks
+
+- ✅ **React** 17+ 
+- ✅ **Next.js** 12+ (Pages & App Router)
+- ✅ **Remix**
+- ✅ **Vite + React**
+- ✅ **Create React App**
+- ✅ **Gatsby**
+
+### Bundler Compatibility
+
+- ✅ **Webpack** 5+
+- ✅ **Vite** 3+
+- ✅ **Rollup** 3+
+- ✅ **Parcel** 2+
+- ✅ **esbuild**
+
+## 🚨 Migration from Other Toast Libraries
+
+### From react-hot-toast
+
+```tsx
+// Before
+import toast, { Toaster } from 'react-hot-toast';
+
+// After  
+import { toast, ToastProvider } from 'react-toast-kit';
+// Replace <Toaster /> with <ToastProvider />
+```
+
+### From react-toastify
+
+```tsx
+// Before
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css'; // Manual CSS import
+
+// After
+import { toast, ToastProvider } from 'react-toast-kit();
+// No CSS import needed! ✨
+// Replace <ToastContainer /> with <ToastProvider />
+```
+
+## 💡 Pro Tips
+
+1. **No CSS Import Needed** - The library automatically injects CSS
+2. **Tree Shaking** - Only imports what you use
+3. **SSR Safe** - Works with server-side rendering
+4. **Performance** - Uses React 18 features for optimal performance
+5. **Accessibility** - Built with screen readers in mind
+
+## 🔧 Troubleshooting
+
+### CSS Not Applied?
+
+The CSS should be automatically injected. If styles aren't appearing:
+
+1. Check browser console for any errors
+2. Verify the library is properly imported
+3. Try manual CSS import: `import 'react-toast-kit/styles'`
+
+### Next.js Issues?
+
+- Use `/nextjs/client` import for App Router
+- Ensure client components are marked with `'use client'`
+
+### TypeScript Errors?
+
+- Ensure you have the latest types: `@types/react@^18`
+- Check peer dependencies are installed
+
+## 📄 License
+
+MIT © [DanhDeveloper](https://github.com/danhnhdeveloper308)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details.
+
+---
+
+**Made with ❤️ for the React community**
