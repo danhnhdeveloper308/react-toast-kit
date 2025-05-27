@@ -1,64 +1,352 @@
-name: Publish to npm
+name: Auto Version & Publish
 
 on:
-  release:
-    types: [created]
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version to publish (e.g., patch, minor, major, or specific version)'
+      version_type:
+        description: 'Version bump type'
         required: true
         default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      skip_tests:
+        description: 'Skip tests'
+        required: false
+        default: false
+        type: boolean
 
-permissions:
-  contents: write  # This gives the workflow write access to repository contents
-  packages: write  # This gives permission to publish packages
+env:
+  NODE_VERSION: '18'
+  PACKAGE_NAME: 'react-toast-kit'
 
 jobs:
-  publish:
+  version-check:
     runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.version-check.outputs.should_publish }}
+      current_version: ${{ steps.version-check.outputs.current_version }}
+      npm_version: ${{ steps.version-check.outputs.npm_version }}
+      new_version: ${{ steps.version-check.outputs.new_version }}
+      version_changed: ${{ steps.version-check.outputs.version_changed }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Setup Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-      
+
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
-      
-      - name: Setup pnpm
+
+      - name: Install pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: '9'
-      
+          version: latest
+
+      - name: Check versions and determine action
+        id: version-check
+        run: |
+          # Get current package version
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Current package version: $CURRENT_VERSION"
+
+          # Get npm version (handle case where package doesn't exist)
+          NPM_VERSION=""
+          if npm view ${{ env.PACKAGE_NAME }} version 2>/dev/null; then
+            NPM_VERSION=$(npm view ${{ env.PACKAGE_NAME }} version)
+            echo "npm_version=$NPM_VERSION" >> $GITHUB_OUTPUT
+            echo "🌐 NPM version: $NPM_VERSION"
+          else
+            echo "npm_version=none" >> $GITHUB_OUTPUT
+            echo "🌐 Package not found on NPM (first publish)"
+            NPM_VERSION="0.0.0"
+          fi
+
+          # Determine version bump type
+          VERSION_TYPE="patch"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION_TYPE="${{ github.event.inputs.version_type }}"
+          else
+            # Auto-detect based on commit messages
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+            if echo "$COMMIT_MSG" | grep -i "BREAKING CHANGE\|major:" >/dev/null; then
+              VERSION_TYPE="major"
+            elif echo "$COMMIT_MSG" | grep -i "feat\|feature\|minor:" >/dev/null; then
+              VERSION_TYPE="minor"
+            fi
+          fi
+          echo "🔄 Version bump type: $VERSION_TYPE"
+
+          # Calculate new version using Node.js
+          NEW_VERSION=$(node -e "
+            const current = '$CURRENT_VERSION';
+            const npm = '$NPM_VERSION';
+            const type = '$VERSION_TYPE';
+            
+            function parseVersion(v) {
+              const parts = v.split('.').map(Number);
+              return { major: parts[0] || 0, minor: parts[1] || 0, patch: parts[2] || 0 };
+            }
+            
+            function compareVersions(a, b) {
+              const va = parseVersion(a);
+              const vb = parseVersion(b);
+              if (va.major !== vb.major) return va.major - vb.major;
+              if (va.minor !== vb.minor) return va.minor - vb.minor;
+              return va.patch - vb.patch;
+            }
+            
+            // Use the higher version as base
+            const baseVersion = compareVersions(current, npm) >= 0 ? current : npm;
+            const base = parseVersion(baseVersion);
+            
+            let newVersion;
+            switch (type) {
+              case 'major':
+                newVersion = \`\${base.major + 1}.0.0\`;
+                break;
+              case 'minor':
+                newVersion = \`\${base.major}.\${base.minor + 1}.0\`;
+                break;
+              default:
+                newVersion = \`\${base.major}.\${base.minor}.\${base.patch + 1}\`;
+            }
+            
+            console.log(newVersion);
+          ")
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "🚀 New version will be: $NEW_VERSION"
+
+          # Check if we should publish
+          SHOULD_PUBLISH="false"
+          VERSION_CHANGED="false"
+
+          if [ "$NPM_VERSION" = "none" ] || [ "$CURRENT_VERSION" != "$NPM_VERSION" ]; then
+            SHOULD_PUBLISH="true"
+            if [ "$CURRENT_VERSION" != "$NEW_VERSION" ]; then
+              VERSION_CHANGED="true"
+            fi
+          fi
+
+          echo "should_publish=$SHOULD_PUBLISH" >> $GITHUB_OUTPUT
+          echo "version_changed=$VERSION_CHANGED" >> $GITHUB_OUTPUT
+          echo "📋 Should publish: $SHOULD_PUBLISH"
+          echo "📋 Version will change: $VERSION_CHANGED"
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    needs: version-check
+    if: needs.version-check.outputs.should_publish == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
-      - name: Update version
-        if: github.event_name == 'workflow_dispatch'
+
+      - name: Update version if needed
+        if: needs.version-check.outputs.version_changed == 'true'
         run: |
-          npm version ${{ github.event.inputs.version }} -m "Bump version to %s [skip ci]"
-      
-      - name: Push version changes
-        if: github.event_name == 'workflow_dispatch'
+          NEW_VERSION="${{ needs.version-check.outputs.new_version }}"
+          echo "📝 Updating package.json version to $NEW_VERSION"
+          
+          # Update package.json version
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '$NEW_VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          
+          echo "✅ Version updated to $NEW_VERSION"
+
+      - name: Run type check
+        run: pnpm run type-check
+
+      - name: Run tests
+        if: github.event.inputs.skip_tests != 'true'
         run: |
-          git push origin main --follow-tags
-      
-      - name: Build package
-        run: pnpm build
-      
-      - name: Publish to npm
+          if [ -f "package.json" ] && grep -q '"test"' package.json; then
+            echo "🧪 Running tests..."
+            pnpm test
+          else
+            echo "⚠️ No tests found, skipping..."
+          fi
+
+      - name: Run build
+        run: pnpm run build
+
+      - name: Verify build output
         run: |
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
-          pnpm publish --access public --no-git-checks
+          echo "📁 Build output verification:"
+          ls -la dist/ || echo "No dist directory found"
+          
+          # Check if main files exist
+          if [ -f "dist/index.js" ] || [ -f "dist/index.mjs" ] || [ -f "dist/index.cjs" ]; then
+            echo "✅ Main build files found"
+          else
+            echo "❌ Main build files not found"
+            exit 1
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-output
+          path: |
+            dist/
+            package.json
+            README.md
+            LICENSE
+          retention-days: 1
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [version-check, build-and-test]
+    if: needs.version-check.outputs.should_publish == 'true'
+    environment: npm-publish
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-output
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prod
+
+      - name: Final pre-publish check
+        run: |
+          echo "🔍 Final pre-publish verification:"
+          echo "Package name: $(node -p "require('./package.json').name")"
+          echo "Package version: $(node -p "require('./package.json').version")"
+          echo "📁 Files to be published:"
+          npm pack --dry-run
+
+      - name: Publish to NPM
+        run: |
+          echo "🚀 Publishing to NPM..."
+          npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create Git tag
+        if: needs.version-check.outputs.version_changed == 'true'
+        run: |
+          NEW_VERSION="${{ needs.version-check.outputs.new_version }}"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Commit version change
+          git add package.json
+          git commit -m "chore: bump version to $NEW_VERSION [skip ci]" || echo "No changes to commit"
+          
+          # Create and push tag
+          git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        if: needs.version-check.outputs.version_changed == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.version-check.outputs.new_version }}
+          release_name: Release v${{ needs.version-check.outputs.new_version }}
+          body: |
+            ## 🚀 Release v${{ needs.version-check.outputs.new_version }}
+            
+            ### 📦 Package Information
+            - **Package**: ${{ env.PACKAGE_NAME }}
+            - **Version**: ${{ needs.version-check.outputs.new_version }}
+            - **Previous Version**: ${{ needs.version-check.outputs.npm_version }}
+            
+            ### 📥 Installation
+            ```bash
+            npm install ${{ env.PACKAGE_NAME }}@${{ needs.version-check.outputs.new_version }}
+            # or
+            pnpm add ${{ env.PACKAGE_NAME }}@${{ needs.version-check.outputs.new_version }}
+            # or  
+            yarn add ${{ env.PACKAGE_NAME }}@${{ needs.version-check.outputs.new_version }}
+            ```
+            
+            ### 🔗 Links
+            - [NPM Package](https://www.npmjs.com/package/${{ env.PACKAGE_NAME }})
+            - [Documentation](https://react-toast-kit-docs.vercel.app)
+            
+            ---
+            *This release was automatically created by GitHub Actions*
+          draft: false
+          prerelease: false
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [version-check, build-and-test, publish]
+    if: always()
+    steps:
+      - name: Notify results
+        run: |
+          if [ "${{ needs.publish.result }}" = "success" ]; then
+            echo "🎉 Successfully published ${{ env.PACKAGE_NAME }}@${{ needs.version-check.outputs.new_version }}"
+            echo "📦 Package: https://www.npmjs.com/package/${{ env.PACKAGE_NAME }}"
+            echo "🏷️ Tag: v${{ needs.version-check.outputs.new_version }}"
+          elif [ "${{ needs.version-check.outputs.should_publish }}" = "false" ]; then
+            echo "ℹ️ No publish needed - versions are in sync"
+            echo "📦 Current version: ${{ needs.version-check.outputs.current_version }}"
+            echo "🌐 NPM version: ${{ needs.version-check.outputs.npm_version }}"
+          else
+            echo "❌ Publish failed or was cancelled"
+            echo "🔍 Check the logs above for more details"
+          fi

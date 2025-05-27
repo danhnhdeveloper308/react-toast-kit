@@ -58,7 +58,20 @@
     "test": "vitest",
     "prepublishOnly": "npm run build",
     "build:clean": "rm -rf dist && npm run build",
-    "test:css": "node -e \"console.log('Testing CSS injection...'); require('./dist/index.cjs');\""
+    "test:css": "node -e \"console.log('Testing CSS injection...'); require('./dist/index.cjs');\"",
+    "version:status": "./scripts/version-manager.sh status",
+    "version:bump": "./scripts/version-manager.sh bump",
+    "version:bump:patch": "./scripts/version-manager.sh bump patch",
+    "version:bump:minor": "./scripts/version-manager.sh bump minor",
+    "version:bump:major": "./scripts/version-manager.sh bump major",
+    "version:set": "./scripts/version-manager.sh set",
+    "publish:dry": "./scripts/version-manager.sh publish-dry",
+    "publish:manual": "./scripts/version-manager.sh publish",
+    "release": "./scripts/version-manager.sh release",
+    "release:patch": "./scripts/version-manager.sh release patch",
+    "release:minor": "./scripts/version-manager.sh release minor",
+    "release:major": "./scripts/version-manager.sh release major",
+    "setup:secrets": "./scripts/version-manager.sh setup-secrets"
   },
   "keywords": [
     "react",

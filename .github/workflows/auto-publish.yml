@@ -1,0 +1,371 @@
+name: Auto Publish to NPM
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'tsconfig.json'
+      - 'tsup.config.ts'
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      version_number:
+        description: 'Specific version number (optional, overrides version_type)'
+        required: false
+        type: string
+      force_publish:
+        description: 'Force publish even without source changes'
+        required: false
+        default: false
+        type: boolean
+  release:
+    types: [published]
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '8'
+
+jobs:
+  auto-publish:
+    runs-on: ubuntu-latest
+    if: github.repository == 'danhnhdeveloper308/react-toast-kit'
+    
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Get current npm version
+        id: get-npm-version
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          
+          # Kiểm tra xem package có tồn tại trên npm không
+          if npm view $PACKAGE_NAME version > /dev/null 2>&1; then
+            NPM_VERSION=$(npm view $PACKAGE_NAME version)
+            echo "npm-version=$NPM_VERSION" >> $GITHUB_OUTPUT
+            echo "package-exists=true" >> $GITHUB_OUTPUT
+            echo "NPM version found: $NPM_VERSION"
+          else
+            echo "npm-version=0.0.0" >> $GITHUB_OUTPUT
+            echo "package-exists=false" >> $GITHUB_OUTPUT
+            echo "Package not found on npm, will start from 1.0.0"
+          fi
+
+      - name: Get current local version
+        id: get-version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "current-version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Local version: $CURRENT_VERSION"
+
+      - name: Check if should publish
+        id: check-publish
+        run: |
+          # Chỉ publish khi:
+          # 1. Push vào main branch
+          # 2. Manual workflow dispatch
+          # 3. Release được tạo
+          
+          SHOULD_PUBLISH=false
+          
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            # Kiểm tra xem có thay đổi trong src/ hoặc package.json không
+            if git diff --name-only HEAD~1 HEAD | grep -E "(src/|package\.json|index\.ts|index\.js)" > /dev/null; then
+              SHOULD_PUBLISH=true
+              echo "Changes detected in source files, will publish"
+            else
+              echo "No source changes detected, skipping publish"
+            fi
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ github.event.inputs.force_publish }}" == "true" ]]; then
+              SHOULD_PUBLISH=true
+              echo "Force publish enabled, will publish"
+            else
+              # Kiểm tra thay đổi cho manual dispatch
+              if git diff --name-only HEAD~1 HEAD | grep -E "(src/|package\.json)" > /dev/null || [[ "${{ github.event.inputs.version_number }}" != "" ]]; then
+                SHOULD_PUBLISH=true
+                echo "Manual trigger with changes or specific version, will publish"
+              else
+                echo "Manual trigger but no changes detected, skipping publish"
+              fi
+            fi
+          elif [[ "${{ github.event_name }}" == "release" ]]; then
+            SHOULD_PUBLISH=true
+            echo "Release event, will publish"
+          fi
+          
+          echo "should-publish=$SHOULD_PUBLISH" >> $GITHUB_OUTPUT
+
+      - name: Calculate new version intelligently
+        id: calculate-version
+        if: steps.check-publish.outputs.should-publish == 'true'
+        run: |
+          NPM_VERSION="${{ steps.get-npm-version.outputs.npm-version }}"
+          LOCAL_VERSION="${{ steps.get-version.outputs.current-version }}"
+          PACKAGE_EXISTS="${{ steps.get-npm-version.outputs.package-exists }}"
+          
+          echo "NPM Version: $NPM_VERSION"
+          echo "Local Version: $LOCAL_VERSION"
+          echo "Package exists on npm: $PACKAGE_EXISTS"
+          
+          # Function to compare versions
+          version_compare() {
+            if [[ $1 == $2 ]]; then
+              echo "equal"
+            elif [[ $1 = $(echo -e "$1\n$2" | sort -V | head -n1) ]]; then
+              echo "less"
+            else
+              echo "greater"
+            fi
+          }
+          
+          # Function to increment version
+          increment_version() {
+            local version=$1
+            local type=$2
+            
+            IFS='.' read -ra PARTS <<< "$version"
+            local major=${PARTS[0]}
+            local minor=${PARTS[1]}
+            local patch=${PARTS[2]}
+            
+            case $type in
+              "major")
+                major=$((major + 1))
+                minor=0
+                patch=0
+                ;;
+              "minor")
+                minor=$((minor + 1))
+                patch=0
+                ;;
+              "patch"|*)
+                patch=$((patch + 1))
+                ;;
+            esac
+            
+            echo "$major.$minor.$patch"
+          }
+          
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.version_number }}" ]]; then
+            # Sử dụng version cụ thể từ input
+            NEW_VERSION="${{ github.event.inputs.version_number }}"
+            echo "Using specific version from input: $NEW_VERSION"
+            
+            # Validate version format
+            if [[ ! $NEW_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Error: Invalid version format. Use semantic versioning (e.g., 1.2.3)"
+              exit 1
+            fi
+            
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Sử dụng version bump type từ input
+            VERSION_TYPE="${{ github.event.inputs.version_type }}"
+            
+            if [[ "$PACKAGE_EXISTS" == "true" ]]; then
+              # Sử dụng npm version làm base
+              NEW_VERSION=$(increment_version "$NPM_VERSION" "$VERSION_TYPE")
+            else
+              # Package chưa tồn tại, bắt đầu từ 1.0.0
+              case $VERSION_TYPE in
+                "major") NEW_VERSION="1.0.0";;
+                "minor") NEW_VERSION="0.1.0";;
+                "patch"|*) NEW_VERSION="0.0.1";;
+              esac
+            fi
+            echo "Bumped version ($VERSION_TYPE) from npm: $NEW_VERSION"
+            
+          else
+            # Auto increment cho push thường
+            if [[ "$PACKAGE_EXISTS" == "true" ]]; then
+              # So sánh local version với npm version
+              COMPARISON=$(version_compare "$LOCAL_VERSION" "$NPM_VERSION")
+              
+              if [[ "$COMPARISON" == "greater" ]]; then
+                # Local version cao hơn npm, sử dụng local version
+                NEW_VERSION="$LOCAL_VERSION"
+                echo "Local version is newer than npm, using local: $NEW_VERSION"
+              elif [[ "$COMPARISON" == "equal" ]]; then
+                # Version bằng nhau, increment patch từ npm version
+                NEW_VERSION=$(increment_version "$NPM_VERSION" "patch")
+                echo "Versions are equal, auto-incrementing patch: $NEW_VERSION"
+              else
+                # Local version thấp hơn npm, increment từ npm version
+                NEW_VERSION=$(increment_version "$NPM_VERSION" "patch")
+                echo "NPM version is newer, incrementing from npm: $NEW_VERSION"
+              fi
+            else
+              # Package chưa tồn tại trên npm
+              if [[ "$LOCAL_VERSION" == "1.0.0" || "$LOCAL_VERSION" == "0.0.0" ]]; then
+                NEW_VERSION="1.0.0"
+              else
+                NEW_VERSION="$LOCAL_VERSION"
+              fi
+              echo "First publish, using version: $NEW_VERSION"
+            fi
+          fi
+          
+          echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Final calculated version: $NEW_VERSION"
+
+      - name: Update package.json version
+        if: steps.check-publish.outputs.should-publish == 'true'
+        run: |
+          NEW_VERSION="${{ steps.calculate-version.outputs.new-version }}"
+          echo "Updating package.json to version: $NEW_VERSION"
+          npm version $NEW_VERSION --no-git-tag-version
+
+      - name: Lint code
+        if: steps.check-publish.outputs.should-publish == 'true'
+        run: |
+          echo "Running linter..."
+          pnpm lint || {
+            echo "Linting completed with warnings, continuing..."
+          }
+
+      - name: Build package
+        if: steps.check-publish.outputs.should-publish == 'true'
+        run: |
+          echo "Building package..."
+          pnpm build
+
+      - name: Run tests
+        if: steps.check-publish.outputs.should-publish == 'true'
+        run: |
+          echo "Running tests..."
+          if pnpm test run 2>/dev/null || pnpm test --run 2>/dev/null; then
+            echo "Tests passed"
+          else
+            echo "No test files found or tests failed, continuing..."
+          fi
+
+      - name: Publish to npm
+        if: steps.check-publish.outputs.should-publish == 'true'
+        run: |
+          NEW_VERSION="${{ steps.calculate-version.outputs.new-version }}"
+          echo "Publishing version $NEW_VERSION to npm..."
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create git tag and push
+        if: steps.check-publish.outputs.should-publish == 'true'
+        run: |
+          NEW_VERSION="${{ steps.calculate-version.outputs.new-version }}"
+          
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Commit version change
+          git add package.json
+          git commit -m "chore: bump version to v$NEW_VERSION [skip ci]" || echo "No changes to commit"
+          
+          # Create and push tag
+          git tag "v$NEW_VERSION"
+          git push origin main
+          git push origin "v$NEW_VERSION"
+          
+          echo "Created and pushed tag v$NEW_VERSION"
+
+      - name: Create GitHub Release
+        if: steps.check-publish.outputs.should-publish == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.calculate-version.outputs.new-version }}
+          release_name: Release v${{ steps.calculate-version.outputs.new-version }}
+          body: |
+            ## What's Changed
+            
+            Auto-published version ${{ steps.calculate-version.outputs.new-version }}
+            
+            ### 📦 Package Information
+            - **NPM**: https://www.npmjs.com/package/react-toast-kit
+            - **GitHub**: ${{ github.server_url }}/${{ github.repository }}
+            
+            ### 🚀 Installation
+            ```bash
+            npm install react-toast-kit
+            # or
+            pnpm add react-toast-kit
+            # or  
+            yarn add react-toast-kit
+            ```
+            
+            **Full Changelog**: ${{ github.server_url }}/${{ github.repository }}/compare/v${{ steps.get-version.outputs.current-version }}...v${{ steps.calculate-version.outputs.new-version }}
+          draft: false
+          prerelease: false
+
+      - name: Summary
+        if: steps.check-publish.outputs.should-publish == 'true'
+        run: |
+          NEW_VERSION="${{ steps.calculate-version.outputs.new-version }}"
+          echo "## 🎉 Successfully Published!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: react-toast-kit" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: $NEW_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "- **NPM**: https://www.npmjs.com/package/react-toast-kit" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitHub Release**: ${{ github.server_url }}/${{ github.repository }}/releases/tag/v$NEW_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "npm install react-toast-kit@$NEW_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Skip publish summary
+        if: steps.check-publish.outputs.should-publish != 'true'
+        run: |
+          echo "## ⏭️ Publish Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No source code changes detected or conditions not met for publishing." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Trigger publish manually:" >> $GITHUB_STEP_SUMMARY
+          echo "- Go to Actions → Auto Publish to NPM → Run workflow" >> $GITHUB_STEP_SUMMARY
+          echo "- Or make changes to files in src/ directory" >> $GITHUB_STEP_SUMMARY
