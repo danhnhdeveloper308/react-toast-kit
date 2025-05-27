@@ -110,10 +110,19 @@ jobs:
           # 1. Push vào main branch
           # 2. Manual workflow dispatch
           # 3. Release được tạo
+          # 4. Commit message contains --frozen-lockfile or --no-frozen-lockfile (for fixes)
           
           SHOULD_PUBLISH=false
           
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+          # Check for force publish from workflow dispatch
+          if [[ "${{ github.event.inputs.force_publish }}" == "true" ]]; then
+            SHOULD_PUBLISH=true
+            echo "Force publish enabled via workflow dispatch, will publish"
+          # Check for special commit message to force publish
+          elif git log -1 --pretty=%B | grep -i "added --frozen-lockfile\|--no-frozen-lockfile" > /dev/null; then
+            SHOULD_PUBLISH=true
+            echo "Detected lockfile fix commit, forcing publish"
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
             # Kiểm tra xem có thay đổi trong src/ hoặc package.json không
             if git diff --name-only HEAD~1 HEAD | grep -E "(src/|package\.json|index\.ts|index\.js)" > /dev/null; then
               SHOULD_PUBLISH=true
@@ -122,17 +131,12 @@ jobs:
               echo "No source changes detected, skipping publish"
             fi
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            if [[ "${{ github.event.inputs.force_publish }}" == "true" ]]; then
+            # Kiểm tra thay đổi cho manual dispatch
+            if git diff --name-only HEAD~1 HEAD | grep -E "(src/|package\.json)" > /dev/null || [[ "${{ github.event.inputs.version_number }}" != "" ]]; then
               SHOULD_PUBLISH=true
-              echo "Force publish enabled, will publish"
+              echo "Manual trigger with changes or specific version, will publish"
             else
-              # Kiểm tra thay đổi cho manual dispatch
-              if git diff --name-only HEAD~1 HEAD | grep -E "(src/|package\.json)" > /dev/null || [[ "${{ github.event.inputs.version_number }}" != "" ]]; then
-                SHOULD_PUBLISH=true
-                echo "Manual trigger with changes or specific version, will publish"
-              else
-                echo "Manual trigger but no changes detected, skipping publish"
-              fi
+              echo "Manual trigger but no changes detected, skipping publish"
             fi
           elif [[ "${{ github.event_name }}" == "release" ]]; then
             SHOULD_PUBLISH=true
@@ -192,7 +196,11 @@ jobs:
             echo "$major.$minor.$patch"
           }
           
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.version_number }}" ]]; then
+          # Check for special commit message to force version bump
+          if git log -1 --pretty=%B | grep -i "added --frozen-lockfile\|--no-frozen-lockfile" > /dev/null; then
+            NEW_VERSION=$(increment_version "$LOCAL_VERSION" "patch")
+            echo "Detected lockfile fix commit, bumping patch version"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.version_number }}" ]]; then
             # Sử dụng version cụ thể từ input
             NEW_VERSION="${{ github.event.inputs.version_number }}"
             echo "Using specific version from input: $NEW_VERSION"
