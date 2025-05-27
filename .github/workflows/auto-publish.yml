@@ -258,6 +258,13 @@ jobs:
             fi
           fi
           
+          # Check if the calculated version is the same as current
+          if [[ "$NEW_VERSION" == "$LOCAL_VERSION" ]]; then
+            # If they are the same, bump patch version to avoid npm version error
+            NEW_VERSION=$(increment_version "$LOCAL_VERSION" "patch")
+            echo "New version would be same as current, incrementing patch: $NEW_VERSION"
+          fi
+          
           echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "Final calculated version: $NEW_VERSION"
 
@@ -265,8 +272,26 @@ jobs:
         if: steps.check-publish.outputs.should-publish == 'true'
         run: |
           NEW_VERSION="${{ steps.calculate-version.outputs.new-version }}"
-          echo "Updating package.json to version: $NEW_VERSION"
-          npm version $NEW_VERSION --no-git-tag-version
+          CURRENT_VERSION="${{ steps.get-version.outputs.current-version }}"
+          
+          echo "Updating package.json from $CURRENT_VERSION to version: $NEW_VERSION"
+          
+          # Use node.js to update package.json directly to avoid npm version error
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '$NEW_VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          
+          # Verify the update
+          UPDATED_VERSION=$(node -p "require('./package.json').version")
+          if [[ "$UPDATED_VERSION" != "$NEW_VERSION" ]]; then
+            echo "Error: Version update failed. Expected $NEW_VERSION but got $UPDATED_VERSION"
+            exit 1
+          fi
+          
+          echo "✅ Successfully updated version to $NEW_VERSION"
 
       - name: Lint code
         if: steps.check-publish.outputs.should-publish == 'true'

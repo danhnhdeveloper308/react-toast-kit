@@ -201,9 +201,10 @@ jobs:
         if: needs.version-check.outputs.version_changed == 'true'
         run: |
           NEW_VERSION="${{ needs.version-check.outputs.new_version }}"
-          echo "📝 Updating package.json version to $NEW_VERSION"
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "📝 Updating package.json from $CURRENT_VERSION to version: $NEW_VERSION"
           
-          # Update package.json version
+          # Update package.json version using Node.js instead of npm version
           node -e "
             const fs = require('fs');
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
@@ -211,7 +212,14 @@ jobs:
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
           
-          echo "✅ Version updated to $NEW_VERSION"
+          # Verify the update
+          UPDATED_VERSION=$(node -p "require('./package.json').version")
+          if [[ "$UPDATED_VERSION" != "$NEW_VERSION" ]]; then
+            echo "Error: Version update failed. Expected $NEW_VERSION but got $UPDATED_VERSION"
+            exit 1
+          fi
+          
+          echo "✅ Successfully updated version to $NEW_VERSION"
 
       - name: Run type check
         run: pnpm run type-check || echo "Type checking completed with warnings, continuing..."

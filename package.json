@@ -1,6 +1,6 @@
 {
   "name": "react-toast-kit",
-  "version": "1.0.3",
+  "version": "1.0.2",
   "description": "A modern, accessible toast notification system for React applications with automatic CSS injection",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
