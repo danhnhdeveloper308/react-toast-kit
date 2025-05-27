@@ -232,10 +232,32 @@ publish_package() {
     fi
     
     print_info "Publishing to npm..."
+    
+    # Set up .npmrc for authentication
+    if [ -n "$NPM_TOKEN" ]; then
+        print_info "Setting up npm authentication..."
+        echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+        echo "registry=https://registry.npmjs.org/" >> .npmrc
+        echo "always-auth=true" >> .npmrc
+        
+        # Make sure it doesn't get committed
+        if [ -f ".gitignore" ] && ! grep -q ".npmrc" .gitignore; then
+            echo ".npmrc" >> .gitignore
+            print_info "Added .npmrc to .gitignore"
+        fi
+    fi
+    
+    # Publish the package
     npm publish --access public
     
     local version=$(get_current_version)
     print_success "Published version $version to npm"
+    
+    # Clean up .npmrc
+    if [ -f ".npmrc" ] && [ -n "$NPM_TOKEN" ]; then
+        rm .npmrc
+        print_info "Removed temporary .npmrc file"
+    fi
     
     # Create git tag
     print_info "Creating git tag..."

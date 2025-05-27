@@ -322,6 +322,13 @@ jobs:
         run: |
           NEW_VERSION="${{ steps.calculate-version.outputs.new-version }}"
           echo "Publishing version $NEW_VERSION to npm..."
+          
+          # Setup .npmrc file to use NODE_AUTH_TOKEN
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          echo "registry=https://registry.npmjs.org/" >> .npmrc
+          echo "always-auth=true" >> .npmrc
+          
+          # Publish with access public flag
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -401,4 +408,4 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Trigger publish manually:" >> $GITHUB_STEP_SUMMARY
           echo "- Go to Actions → Auto Publish to NPM → Run workflow" >> $GITHUB_STEP_SUMMARY
-          echo "- Or make changes to files in src/ directory" >> $GITHUB_STEP_SUMMARY
+          echo "- Or make changes to files in src/ directory"

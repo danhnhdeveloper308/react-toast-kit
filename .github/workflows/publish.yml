@@ -300,6 +300,13 @@ jobs:
       - name: Publish to NPM
         run: |
           echo "🚀 Publishing to NPM..."
+          
+          # Setup .npmrc file to use NODE_AUTH_TOKEN
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          echo "registry=https://registry.npmjs.org/" >> .npmrc
+          echo "always-auth=true" >> .npmrc
+          
+          # Publish with access public flag
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
