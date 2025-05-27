@@ -233,6 +233,13 @@ const ToastItem = memo(({
     onResume(toast.id);
   }, [onResume, toast.id]);
 
+  // Handler for progress animation completion
+  const handleProgressComplete = useCallback(() => {
+    if (toast.duration > 0) {
+      handleDismiss();
+    }
+  }, [handleDismiss, toast.duration]);
+
   // Swipe gesture handlers
   const swipeGesture = useSwipeGesture(
     toast.swipeToDismiss || false,
@@ -547,6 +554,7 @@ const ToastItem = memo(({
                 duration: toast.duration / 1000,
                 ease: toast.progressAnimation || 'linear',
               }}
+              onAnimationComplete={handleProgressComplete}
               className="react-toast-progress-fill"
               style={{
                 backgroundColor: toast.progressBarColor || undefined,

@@ -216,13 +216,32 @@ export const useToastStore = create<ToastState>((set, get) => ({
   
   addToast: (toast) => {
     try {
-      const { toasts, maxToasts, plugins } = get();
+      const { toasts, maxToasts, plugins, activeTimers, pausedToasts } = get();
+      
+      // Create a complete Toast object with all required fields 
+      // before passing to plugins (this fixes the TypeScript error)
+      const initialToast: Toast = toast;
       
       // Run beforeCreate plugins
-      let processedToast = toast;
+      let processedToast: Toast = initialToast;
       plugins.forEach(plugin => {
         if (plugin.beforeCreate) {
-          processedToast = { ...processedToast, ...plugin.beforeCreate(processedToast) };
+          // Process the toast and ensure it still has all required properties
+          const result = plugin.beforeCreate(processedToast);
+          processedToast = {
+            ...processedToast,
+            ...result,
+            // Ensure required fields from original toast are preserved
+            id: result.id || processedToast.id,
+            createdAt: processedToast.createdAt,
+            variant: result.variant || processedToast.variant,
+            position: result.position || processedToast.position,
+            duration: result.duration !== undefined ? result.duration : processedToast.duration,
+            pauseOnHover: result.pauseOnHover !== undefined ? result.pauseOnHover : processedToast.pauseOnHover,
+            dismissible: result.dismissible !== undefined ? result.dismissible : processedToast.dismissible,
+            dismissOnClick: result.dismissOnClick !== undefined ? result.dismissOnClick : processedToast.dismissOnClick,
+            theme: result.theme || processedToast.theme,
+          };
         }
       });
       
@@ -231,49 +250,61 @@ export const useToastStore = create<ToastState>((set, get) => ({
       if (processedToast.priority === 'high') {
         insertIndex = 0;
       } else if (processedToast.priority === 'normal') {
-        const highPriorityCount = toasts.filter(t => t.priority === 'high').length;
-        insertIndex = highPriorityCount;
+        // Find the first low priority toast
+        const lowPriorityIndex = toasts.findIndex(t => t.priority === 'low');
+        if (lowPriorityIndex !== -1) {
+          insertIndex = lowPriorityIndex;
+        }
       }
       
       // Remove oldest if at capacity
       if (toasts.length >= maxToasts) {
+        // Find the oldest toast that isn't the current one
         const oldestToast = [...toasts]
-          .filter(t => t.priority !== 'high') // Don't remove high priority toasts
-          .sort((a, b) => a.createdAt - b.createdAt)[0];
+          .sort((a, b) => a.createdAt - b.createdAt)
+          .find(t => t.id !== processedToast.id);
+          
         if (oldestToast) {
           get().removeToast(oldestToast.id);
         }
       }
       
+      // Add toast to state
+      const updatedToasts = [...toasts];
+      updatedToasts.splice(insertIndex, 0, processedToast);
+      set({ toasts: updatedToasts });
+      
+      // Set up timer for auto-dismiss if duration is set and toast is not paused
+      if (processedToast.duration && processedToast.duration > 0 && !pausedToasts.has(processedToast.id)) {
+        // Clear any existing timer for this toast
+        const existingTimer = activeTimers.get(processedToast.id);
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+        }
+        
+        // Create new timer
+        const timerId = window.setTimeout(() => {
+          get().removeToast(processedToast.id);
+        }, processedToast.duration) as unknown as number;
+        
+        // Store timer reference
+        set(state => ({
+          activeTimers: new Map(state.activeTimers).set(processedToast.id, timerId)
+        }));
+      }
+      
+      // Run afterCreate plugins
+      plugins.forEach(plugin => {
+        if (plugin.afterCreate) {
+          plugin.afterCreate(processedToast);
+        }
+      });
+      
       // Add stagger delay if specified
       if (processedToast.stagger && processedToast.stagger > 0) {
         setTimeout(() => {
-          set((state) => {
-            const newToasts = [...state.toasts];
-            newToasts.splice(insertIndex, 0, processedToast);
-            return { toasts: newToasts };
-          });
-          
-          // Run afterCreate plugins
-          plugins.forEach(plugin => {
-            if (plugin.afterCreate) {
-              plugin.afterCreate(processedToast);
-            }
-          });
+          // Returning ID after stagger
         }, processedToast.stagger);
-      } else {
-        set((state) => {
-          const newToasts = [...state.toasts];
-          newToasts.splice(insertIndex, 0, processedToast);
-          return { toasts: newToasts };
-        });
-        
-        // Run afterCreate plugins
-        plugins.forEach(plugin => {
-          if (plugin.afterCreate) {
-            plugin.afterCreate(processedToast);
-          }
-        });
       }
       
       return processedToast.id;
@@ -293,9 +324,8 @@ export const useToastStore = create<ToastState>((set, get) => ({
       // Run beforeRemove plugins
       let shouldRemove = true;
       plugins.forEach(plugin => {
-        if (plugin.beforeRemove) {
-          const result = plugin.beforeRemove(toast);
-          if (result === false) shouldRemove = false;
+        if (plugin.beforeRemove && plugin.beforeRemove(toast) === false) {
+          shouldRemove = false;
         }
       });
       
@@ -305,7 +335,6 @@ export const useToastStore = create<ToastState>((set, get) => ({
       const timerId = activeTimers.get(id);
       if (timerId) {
         clearTimeout(timerId);
-        activeTimers.delete(id);
       }
       
       // Call onDismiss handler
@@ -332,14 +361,48 @@ export const useToastStore = create<ToastState>((set, get) => ({
   
   updateToast: (id, updatedToast) => {
     try {
+      const { activeTimers } = get();
+      // Update the toast in state
       set((state) => ({
-        toasts: state.toasts.map((t) => (t.id === id ? { ...t, ...updatedToast, updating: true } : t))
+        toasts: state.toasts.map((t) => {
+          if (t.id === id) {
+            const updated = { ...t, ...updatedToast, updating: true };
+            
+            // If duration changed and there's an active timer, reset it
+            if (updatedToast.duration !== undefined && updated.duration !== t.duration) {
+              // Clear existing timer
+              const existingTimer = activeTimers.get(id);
+              if (existingTimer) {
+                clearTimeout(existingTimer);
+              }
+              
+              // Set up new timer if duration is positive and toast isn't paused
+              if (updated.duration > 0 && !state.pausedToasts.has(id)) {
+                const newTimerId = window.setTimeout(() => {
+                  get().removeToast(id);
+                }, updated.duration) as unknown as number;
+                
+                // Update the timer map after the state update completes
+                setTimeout(() => {
+                  set(state => ({
+                    activeTimers: new Map(state.activeTimers).set(id, newTimerId)
+                  }));
+                }, 0);
+              }
+            }
+            
+            return updated;
+          }
+          return t;
+        })
       }));
       
       // Clear updating flag after animation
       setTimeout(() => {
         set((state) => ({
-          toasts: state.toasts.map((t) => (t.id === id ? { ...t, updating: false } : t))
+          toasts: state.toasts.map((t) => 
+            t.id === id ? { ...t, updating: false } : t
+          )
         }));
       }, 100);
     } catch (error) {
@@ -348,17 +411,51 @@ export const useToastStore = create<ToastState>((set, get) => ({
   },
   
   pauseToast: (id) => {
+    const { activeTimers } = get();
+    // Clear the existing timer if there is one
+    const existingTimer = activeTimers.get(id);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      
+      // Update active timers map to remove this timer
+      set(state => {
+        const newTimers = new Map(state.activeTimers);
+        newTimers.delete(id);
+        return { activeTimers: newTimers };
+      });
+    }
+    
     set((state) => ({
       pausedToasts: new Set(state.pausedToasts).add(id)
     }));
   },
   
   resumeToast: (id) => {
+    const { toasts } = get();
+    // Remove from paused set
     set((state) => {
       const newPausedToasts = new Set(state.pausedToasts);
       newPausedToasts.delete(id);
       return { pausedToasts: newPausedToasts };
     });
+    
+    // Restart the timer if toast has a duration
+    const toast = toasts.find(t => t.id === id);
+    if (toast && toast.duration && toast.duration > 0) {
+      // Calculate remaining time based on creation time and elapsed time
+      const elapsed = Date.now() - toast.createdAt;
+      const remaining = Math.max(0, toast.duration - elapsed);
+      
+      // Create new timer with remaining time
+      const timerId = window.setTimeout(() => {
+        get().removeToast(id);
+      }, remaining) as unknown as number;
+      
+      // Store timer reference
+      set(state => ({
+        activeTimers: new Map(state.activeTimers).set(id, timerId)
+      }));
+    }
   },
   
   clearAllToasts: () => {

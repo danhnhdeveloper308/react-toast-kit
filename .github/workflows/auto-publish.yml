@@ -4,11 +4,10 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'src/**'
-      - 'package.json'
-      - 'tsconfig.json'
-      - 'tsup.config.ts'
+    paths-ignore:
+      - '*.md'
+      - '.gitignore'
+      - 'docs/**'
   workflow_dispatch:
     inputs:
       version_type:
@@ -27,7 +26,7 @@ on:
       force_publish:
         description: 'Force publish even without source changes'
         required: false
-        default: false
+        default: true
         type: boolean
   release:
     types: [published]
@@ -39,7 +38,7 @@ env:
 jobs:
   auto-publish:
     runs-on: ubuntu-latest
-    if: github.repository == 'danhnhdeveloper308/react-toast-kit'
+    # Remove the specific repository check to allow any fork to use this
     
     permissions:
       contents: write
@@ -51,6 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Use a specific PAT with write permissions
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
@@ -84,7 +84,7 @@ jobs:
         run: |
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           
-          # Kiểm tra xem package có tồn tại trên npm không
+          # Check if package exists on npm
           if npm view $PACKAGE_NAME version > /dev/null 2>&1; then
             NPM_VERSION=$(npm view $PACKAGE_NAME version)
             echo "npm-version=$NPM_VERSION" >> $GITHUB_OUTPUT
@@ -106,40 +106,25 @@ jobs:
       - name: Check if should publish
         id: check-publish
         run: |
-          # Chỉ publish khi:
-          # 1. Push vào main branch
-          # 2. Manual workflow dispatch
-          # 3. Release được tạo
-          # 4. Commit message contains --frozen-lockfile or --no-frozen-lockfile (for fixes)
+          # Always default to publishing for manual workflow dispatch
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should-publish=true" >> $GITHUB_OUTPUT
+            echo "Manual workflow trigger, will publish regardless of changes"
+            exit 0
+          fi
           
-          SHOULD_PUBLISH=false
+          # For push events
+          SHOULD_PUBLISH=true
           
           # Check for force publish from workflow dispatch
           if [[ "${{ github.event.inputs.force_publish }}" == "true" ]]; then
-            SHOULD_PUBLISH=true
             echo "Force publish enabled via workflow dispatch, will publish"
           # Check for special commit message to force publish
-          elif git log -1 --pretty=%B | grep -i "added --frozen-lockfile\|--no-frozen-lockfile" > /dev/null; then
-            SHOULD_PUBLISH=true
-            echo "Detected lockfile fix commit, forcing publish"
+          elif git log -1 --pretty=%B | grep -i "added --frozen-lockfile\|--no-frozen-lockfile\|bump\|version\|publish\|release" > /dev/null; then
+            echo "Detected versioning-related commit, forcing publish"
           elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
-            # Kiểm tra xem có thay đổi trong src/ hoặc package.json không
-            if git diff --name-only HEAD~1 HEAD | grep -E "(src/|package\.json|index\.ts|index\.js)" > /dev/null; then
-              SHOULD_PUBLISH=true
-              echo "Changes detected in source files, will publish"
-            else
-              echo "No source changes detected, skipping publish"
-            fi
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Kiểm tra thay đổi cho manual dispatch
-            if git diff --name-only HEAD~1 HEAD | grep -E "(src/|package\.json)" > /dev/null || [[ "${{ github.event.inputs.version_number }}" != "" ]]; then
-              SHOULD_PUBLISH=true
-              echo "Manual trigger with changes or specific version, will publish"
-            else
-              echo "Manual trigger but no changes detected, skipping publish"
-            fi
+            echo "Push to main branch, publishing"
           elif [[ "${{ github.event_name }}" == "release" ]]; then
-            SHOULD_PUBLISH=true
             echo "Release event, will publish"
           fi
           
@@ -196,12 +181,8 @@ jobs:
             echo "$major.$minor.$patch"
           }
           
-          # Check for special commit message to force version bump
-          if git log -1 --pretty=%B | grep -i "added --frozen-lockfile\|--no-frozen-lockfile" > /dev/null; then
-            NEW_VERSION=$(increment_version "$LOCAL_VERSION" "patch")
-            echo "Detected lockfile fix commit, bumping patch version"
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.version_number }}" ]]; then
-            # Sử dụng version cụ thể từ input
+          # Manual workflow with specified version
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.version_number }}" ]]; then
             NEW_VERSION="${{ github.event.inputs.version_number }}"
             echo "Using specific version from input: $NEW_VERSION"
             
@@ -210,59 +191,16 @@ jobs:
               echo "Error: Invalid version format. Use semantic versioning (e.g., 1.2.3)"
               exit 1
             fi
-            
+          # Manual workflow with version type
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Sử dụng version bump type từ input
             VERSION_TYPE="${{ github.event.inputs.version_type }}"
-            
-            if [[ "$PACKAGE_EXISTS" == "true" ]]; then
-              # Sử dụng npm version làm base
-              NEW_VERSION=$(increment_version "$NPM_VERSION" "$VERSION_TYPE")
-            else
-              # Package chưa tồn tại, bắt đầu từ 1.0.0
-              case $VERSION_TYPE in
-                "major") NEW_VERSION="1.0.0";;
-                "minor") NEW_VERSION="0.1.0";;
-                "patch"|*) NEW_VERSION="0.0.1";;
-              esac
-            fi
-            echo "Bumped version ($VERSION_TYPE) from npm: $NEW_VERSION"
-            
+            NEW_VERSION=$(increment_version "$LOCAL_VERSION" "$VERSION_TYPE")
+            echo "Incrementing $VERSION_TYPE version from local: $NEW_VERSION"
+          # Auto increment for regular pushes
           else
-            # Auto increment cho push thường
-            if [[ "$PACKAGE_EXISTS" == "true" ]]; then
-              # So sánh local version với npm version
-              COMPARISON=$(version_compare "$LOCAL_VERSION" "$NPM_VERSION")
-              
-              if [[ "$COMPARISON" == "greater" ]]; then
-                # Local version cao hơn npm, sử dụng local version
-                NEW_VERSION="$LOCAL_VERSION"
-                echo "Local version is newer than npm, using local: $NEW_VERSION"
-              elif [[ "$COMPARISON" == "equal" ]]; then
-                # Version bằng nhau, increment patch từ npm version
-                NEW_VERSION=$(increment_version "$NPM_VERSION" "patch")
-                echo "Versions are equal, auto-incrementing patch: $NEW_VERSION"
-              else
-                # Local version thấp hơn npm, increment từ npm version
-                NEW_VERSION=$(increment_version "$NPM_VERSION" "patch")
-                echo "NPM version is newer, incrementing from npm: $NEW_VERSION"
-              fi
-            else
-              # Package chưa tồn tại trên npm
-              if [[ "$LOCAL_VERSION" == "1.0.0" || "$LOCAL_VERSION" == "0.0.0" ]]; then
-                NEW_VERSION="1.0.0"
-              else
-                NEW_VERSION="$LOCAL_VERSION"
-              fi
-              echo "First publish, using version: $NEW_VERSION"
-            fi
-          fi
-          
-          # Check if the calculated version is the same as current
-          if [[ "$NEW_VERSION" == "$LOCAL_VERSION" ]]; then
-            # If they are the same, bump patch version to avoid npm version error
+            # Always increment patch version for automated pushes
             NEW_VERSION=$(increment_version "$LOCAL_VERSION" "patch")
-            echo "New version would be same as current, incrementing patch: $NEW_VERSION"
+            echo "Auto-incrementing patch version: $NEW_VERSION"
           fi
           
           echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
@@ -276,7 +214,7 @@ jobs:
           
           echo "Updating package.json from $CURRENT_VERSION to version: $NEW_VERSION"
           
-          # Use node.js to update package.json directly to avoid npm version error
+          # Use node.js to update package.json directly
           node -e "
             const fs = require('fs');
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
@@ -305,16 +243,20 @@ jobs:
         if: steps.check-publish.outputs.should-publish == 'true'
         run: |
           echo "Building package..."
-          pnpm build
+          pnpm build || {
+            echo "❌ Build failed"
+            exit 1
+          }
+          echo "✅ Build completed successfully"
 
       - name: Run tests
         if: steps.check-publish.outputs.should-publish == 'true'
         run: |
           echo "Running tests..."
-          if pnpm test run 2>/dev/null || pnpm test --run 2>/dev/null; then
-            echo "Tests passed"
+          if pnpm test run 2>/dev/null || pnpm test --run 2>/dev/null || pnpm test 2>/dev/null; then
+            echo "✅ Tests passed"
           else
-            echo "No test files found or tests failed, continuing..."
+            echo "⚠️ No test files found or tests failed, continuing..."
           fi
 
       - name: Publish to npm
@@ -348,10 +290,15 @@ jobs:
           
           # Create and push tag
           git tag "v$NEW_VERSION"
-          git push origin main
-          git push origin "v$NEW_VERSION"
+          
+          # Try pushing with different authentication methods
+          echo "Pushing changes back to repository..."
+          git push || git push https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git HEAD:main
+          git push --tags || git push --tags https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
           
           echo "Created and pushed tag v$NEW_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
         if: steps.check-publish.outputs.should-publish == 'true'
@@ -362,15 +309,19 @@ jobs:
           tag_name: v${{ steps.calculate-version.outputs.new-version }}
           release_name: Release v${{ steps.calculate-version.outputs.new-version }}
           body: |
-            ## What's Changed
+            ## 🚀 Version ${{ steps.calculate-version.outputs.new-version }}
             
-            Auto-published version ${{ steps.calculate-version.outputs.new-version }}
+            Auto-published from workflow run
             
             ### 📦 Package Information
             - **NPM**: https://www.npmjs.com/package/react-toast-kit
             - **GitHub**: ${{ github.server_url }}/${{ github.repository }}
             
-            ### 🚀 Installation
+            ### 🔄 Changes
+            - Version bump to ${{ steps.calculate-version.outputs.new-version }}
+            - Latest changes from main branch
+            
+            ### 📥 Installation
             ```bash
             npm install react-toast-kit
             # or
@@ -378,8 +329,6 @@ jobs:
             # or  
             yarn add react-toast-kit
             ```
-            
-            **Full Changelog**: ${{ github.server_url }}/${{ github.repository }}/compare/v${{ steps.get-version.outputs.current-version }}...v${{ steps.calculate-version.outputs.new-version }}
           draft: false
           prerelease: false
 
