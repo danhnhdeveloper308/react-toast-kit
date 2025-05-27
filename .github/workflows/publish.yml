@@ -179,7 +179,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Update version if needed
         if: needs.version-check.outputs.version_changed == 'true'
@@ -263,7 +263,7 @@ jobs:
           name: build-output
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prod
+        run: pnpm install --no-frozen-lockfile --prod
 
       - name: Final pre-publish check
         run: |

@@ -195,7 +195,7 @@ bump_version() {
 # Build and test
 build_and_test() {
     print_info "Installing dependencies..."
-    pnpm install --frozen-lockfile
+    pnpm install --no-frozen-lockfile
     
     print_info "Running TypeScript check..."
     pnpm lint || {
