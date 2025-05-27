@@ -1,0 +1,958 @@
+/* React Toast Kit - Complete CSS with all animations */
+
+/* CSS Custom Properties for theming */
+:root {
+  --toast-z-index: 9999;
+  --toast-bg-light: #ffffff;
+  --toast-bg-dark: #1f2937;
+  --toast-text-light: #374151;
+  --toast-text-dark: #f9fafb;
+  --toast-border-light: #e5e7eb;
+  --toast-border-dark: #374151;
+  --toast-shadow-light: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --toast-shadow-dark: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --toast-progress-bg: rgba(0, 0, 0, 0.1);
+  --toast-ripple-light: rgba(255, 255, 255, 0.3);
+  --toast-ripple-dark: rgba(0, 0, 0, 0.3);
+  
+  /* Visual style specific variables */
+  --toast-gradient-light: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  --toast-gradient-dark: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+  --toast-glass-light: rgba(255, 255, 255, 0.65);
+  --toast-glass-border-light: rgba(255, 255, 255, 0.5);
+  --toast-glass-dark: rgba(31, 41, 55, 0.75);
+  --toast-glass-border-dark: rgba(55, 65, 81, 0.4);
+  --toast-shimmer-light: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  --toast-shimmer-dark: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+  --toast-neon-color-light: #00ff88;
+  --toast-neon-color-dark: #00ffcc;
+  --toast-retro-bg-light: #f4f4f4;
+  --toast-retro-text-light: #333333;
+  --toast-retro-border-light: #333333;
+  --toast-retro-bg-dark: #222222;
+  --toast-retro-text-dark: #f0f0f0;
+  --toast-retro-border-dark: #f0f0f0;
+  --toast-confetti-light: rgba(255, 255, 255, 0.7);
+  --toast-confetti-dark: rgba(255, 255, 255, 0.2);
+  
+  /* Progress bar style variables */
+  --progress-success: #10b981;
+  --progress-error: #ef4444;
+  --progress-warning: #f59e0b;
+  --progress-info: #3b82f6;
+  --progress-loading: #6b7280;
+  --progress-default: rgba(255, 255, 255, 0.5);
+}
+
+/* Enhanced theme detection - support for both methods */
+html[data-toast-theme="dark"],
+html.dark,
+html.toast-theme-dark,
+[data-theme="dark"] {
+  --toast-progress-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* Base toast container */
+.react-toast-container {
+  position: fixed;
+  z-index: var(--toast-z-index);
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Increased gap between toasts */
+  pointer-events: none;
+  width: 380px;
+}
+
+.react-toast-item {
+  width: 100%;
+  pointer-events: auto;
+}
+
+/* Base toast styles */
+.react-toast {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px; /* Improved padding for better spacing */
+  border-radius: 8px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: var(--toast-shadow-light);
+  border: 1px solid var(--toast-border-light);
+  background: var(--toast-bg-light);
+  color: var(--toast-text-light);
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  overflow: hidden;
+  min-height: 52px; /* Ensure minimum height for proper alignment */
+}
+
+/* Enhanced dark theme selectors - support multiple theme systems */
+.react-toast[data-theme="dark"],
+html[data-toast-theme="dark"] .react-toast,
+html.dark .react-toast,
+html.toast-theme-dark .react-toast,
+[data-theme="dark"] .react-toast {
+  box-shadow: var(--toast-shadow-dark);
+  border-color: var(--toast-border-dark);
+  background: var(--toast-bg-dark);
+  color: var(--toast-text-dark);
+}
+
+/* Override for light theme when explicitly set */
+.react-toast[data-theme="light"] {
+  box-shadow: var(--toast-shadow-light) !important;
+  border-color: var(--toast-border-light) !important;
+  background: var(--toast-bg-light) !important;
+  color: var(--toast-text-light) !important;
+}
+
+/* Visual styles - Enhanced with MORE OBVIOUS effects */
+
+/* 1. Solid style (default) - already defined in base styles */
+
+/* 2. GLASS STYLE - Now with more pronounced glass effect */
+.react-toast[data-style="glass"] {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: var(--toast-glass-light);
+  border: 1px solid var(--toast-glass-border-light);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 4px 16px rgba(255, 255, 255, 0.15) inset;
+  /* Reflective top highlight */
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.1) 30%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.react-toast[data-style="glass"][data-theme="dark"] {
+  background: var(--toast-glass-dark);
+  border: 1px solid var(--toast-glass-border-dark);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 4px 16px rgba(100, 120, 180, 0.1) inset;
+  /* Subtle blue glow for dark glass */
+  background-image: linear-gradient(
+    to bottom,
+    rgba(80, 120, 200, 0.1) 0%,
+    rgba(20, 30, 60, 0.05) 40%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.react-toast[data-style="glass"] .react-toast-close {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.react-toast[data-style="glass"][data-theme="dark"] .react-toast-close {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+/* 3. GRADIENT STYLE - Much more vibrant and animated */
+.react-toast[data-style="gradient"] {
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradient-shift 10s ease infinite;
+  color: white;
+  border: none;
+  box-shadow: 0 12px 20px -8px rgba(231, 60, 126, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.react-toast[data-style="gradient"][data-theme="dark"] {
+  background: linear-gradient(-45deg, #ff5f6d, #cb218e, #6617cb, #0072ff);
+  background-size: 400% 400%;
+  animation: gradient-shift 10s ease infinite;
+  box-shadow: 0 12px 20px -8px rgba(102, 23, 203, 0.6);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 4. SHIMMER STYLE - More dramatic shimmer effect */
+.react-toast[data-style="shimmer"] {
+  position: relative;
+  background: #f5f5f5;
+  border-color: #ddd;
+  overflow: hidden;
+}
+
+.react-toast[data-style="shimmer"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 150%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-25deg);
+  animation: shimmer-move 3s infinite;
+}
+
+.react-toast[data-style="shimmer"][data-theme="dark"] {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+.react-toast[data-style="shimmer"][data-theme="dark"]::before {
+  background: linear-gradient(
+    to right,
+    rgba(50, 50, 50, 0) 0%,
+    rgba(100, 100, 100, 0.5) 50%,
+    rgba(50, 50, 50, 0) 100%
+  );
+}
+
+@keyframes shimmer-move {
+  0% { left: -150%; }
+  50% { left: 100%; }
+  100% { left: 100%; }
+}
+
+/* 5. PILL STYLE - More distinct curved edges and better button styling */
+.react-toast[data-style="pill"] {
+  border-radius: 9999px;
+  padding-left: 24px;
+  padding-right: 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  border-width: 2px;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.1),
+    rgba(0, 0, 0, 0.05)
+  );
+}
+
+.react-toast[data-style="pill"][data-theme="dark"] {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.05),
+    rgba(0, 0, 0, 0.1)
+  );
+}
+
+.react-toast[data-style="pill"] .react-toast-close {
+  border-radius: 50%;
+  right: 16px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 6. NEON STYLE - Enhanced with more dramatic glow effects */
+.react-toast[data-style="neon"] {
+  background: #000000;
+  border: 2px solid var(--toast-neon-color-light);
+  color: var(--toast-neon-color-light);
+  box-shadow: 
+    0 0 5px rgba(0, 255, 136, 0.2),
+    0 0 20px rgba(0, 255, 136, 0.4),
+    0 0 40px rgba(0, 255, 136, 0.2),
+    inset 0 0 15px rgba(0, 255, 136, 0.1);
+  text-shadow: 0 0 8px var(--toast-neon-color-light);
+  animation: neon-pulse 1.5s ease-in-out infinite alternate;
+}
+
+.react-toast[data-style="neon"][data-theme="dark"] {
+  background: #111111;
+  border: 2px solid var(--toast-neon-color-dark);
+  color: var(--toast-neon-color-dark);
+  box-shadow: 
+    0 0 5px rgba(0, 255, 204, 0.2),
+    0 0 20px rgba(0, 255, 204, 0.4),
+    0 0 40px rgba(0, 255, 204, 0.2),
+    inset 0 0 15px rgba(0, 255, 204, 0.1);
+  text-shadow: 0 0 8px var(--toast-neon-color-dark);
+}
+
+.react-toast[data-style="neon"] .react-toast-close {
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid currentColor;
+  box-shadow: 0 0 4px currentColor;
+}
+
+@keyframes neon-pulse {
+  from {
+    box-shadow: 
+      0 0 5px rgba(0, 255, 136, 0.2),
+      0 0 15px rgba(0, 255, 136, 0.3),
+      0 0 30px rgba(0, 255, 136, 0.2);
+  }
+  to {
+    box-shadow: 
+      0 0 10px rgba(0, 255, 136, 0.3),
+      0 0 25px rgba(0, 255, 136, 0.5),
+      0 0 40px rgba(0, 255, 136, 0.3);
+  }
+}
+
+/* 7. RETRO STYLE - Better typography and proper dark mode support */
+.react-toast[data-style="retro"] {
+  background: var(--toast-retro-bg-light);
+  border: 3px solid var(--toast-retro-border-light);
+  color: var(--toast-retro-text-light);
+  font-family: "Courier New", monospace;
+  box-shadow: 4px 4px 0 var(--toast-retro-border-light);
+  transform: translate(-2px, -2px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: 12px 20px;
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: -1px -1px;
+}
+
+.react-toast[data-style="retro"][data-theme="dark"] {
+  background: var(--toast-retro-bg-dark);
+  border: 3px solid var(--toast-retro-border-dark);
+  color: var(--toast-retro-text-dark);
+  box-shadow: 4px 4px 0 var(--toast-retro-border-dark);
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+.react-toast[data-style="retro"]:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--toast-retro-border-light);
+}
+
+.react-toast[data-style="retro"][data-theme="dark"]:hover {
+  box-shadow: 2px 2px 0 var(--toast-retro-border-dark);
+}
+
+.react-toast[data-style="retro"] .react-toast-title {
+  text-decoration: underline;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.react-toast[data-style="retro"] .react-toast-close {
+  border: 2px solid currentColor;
+  background: transparent;
+  color: currentColor;
+  font-weight: bold;
+}
+
+/* 8. CONFETTI STYLE - Improved pattern with better dark mode contrast and animation */
+.react-toast[data-style="confetti"] {
+  background-color: var(--toast-bg-light);
+  position: relative;
+  overflow: hidden;
+}
+
+.react-toast[data-style="confetti"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle, #FF6B6B 4px, transparent 4px),
+    radial-gradient(circle, #4ECDC4 4px, transparent 4px),
+    radial-gradient(circle, #FFE66D 4px, transparent 4px),
+    radial-gradient(circle, #7785AC 4px, transparent 4px),
+    radial-gradient(circle, #FF6B6B 4px, transparent 4px);
+  background-size: 100px 100px;
+  background-position: 0 0, 40px 40px, 20px 60px, 60px 20px, 80px 80px;
+  opacity: 0.15;
+  animation: confetti-drift 20s linear infinite;
+}
+
+.react-toast[data-style="confetti"][data-theme="dark"] {
+  background-color: var(--toast-bg-dark);
+}
+
+.react-toast[data-style="confetti"][data-theme="dark"]::before {
+  opacity: 0.2;
+}
+
+@keyframes confetti-drift {
+  from {
+    background-position: 0 0, 40px 40px, 20px 60px, 60px 20px, 80px 80px;
+  }
+  to {
+    background-position: 100px 100px, 140px 140px, 120px 160px, 160px 120px, 180px 180px;
+  }
+}
+
+/* Variant styles */
+.react-toast[data-variant="success"] {
+  background: #10b981;
+  color: white;
+  border-color: #059669;
+}
+
+.react-toast[data-variant="error"] {
+  background: #ef4444;
+  color: white;
+  border-color: #dc2626;
+}
+
+.react-toast[data-variant="warning"] {
+  background: #f59e0b;
+  color: white;
+  border-color: #d97706;
+}
+
+.react-toast[data-variant="info"] {
+  background: #3b82f6;
+  color: white;
+  border-color: #2563eb;
+}
+
+.react-toast[data-variant="loading"] {
+  background: #6b7280;
+  color: white;
+  border-color: #4b5563;
+}
+
+/* Visual styles combined with variants - overrides */
+.react-toast[data-style="glass"][data-variant="success"] {
+  background: rgba(16, 185, 129, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: rgba(5, 150, 105, 0.5);
+  box-shadow: 0 8px 32px rgba(16, 185, 129, 0.25);
+}
+
+.react-toast[data-style="glass"][data-variant="error"] {
+  background: rgba(239, 68, 68, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: rgba(220, 38, 38, 0.5);
+  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.25);
+}
+
+.react-toast[data-style="glass"][data-variant="warning"] {
+  background: rgba(245, 158, 11, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: rgba(217, 119, 6, 0.5);
+  box-shadow: 0 8px 32px rgba(245, 158, 11, 0.25);
+}
+
+.react-toast[data-style="glass"][data-variant="info"] {
+  background: rgba(59, 130, 246, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: rgba(37, 99, 235, 0.5);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.25);
+}
+
+/* Progress bar - Basic setup */
+.react-toast-progress {
+  position: absolute;
+  background-color: var(--toast-progress-bg);
+  overflow: hidden;
+}
+
+/* Position variations */
+.react-toast-progress {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.react-toast[data-progress-position="top"] .react-toast-progress {
+  top: 0;
+  bottom: auto;
+}
+
+.react-toast[data-progress-position="left"] .react-toast-progress {
+  top: 0;
+  bottom: 0;
+  right: auto;
+  width: 3px;
+  height: auto;
+}
+
+.react-toast[data-progress-position="right"] .react-toast-progress {
+  top: 0;
+  bottom: 0;
+  left: auto;
+  width: 3px;
+  height: auto;
+}
+
+.react-toast-progress-fill {
+  height: 100%;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.5);
+  transition-property: width, height;
+}
+
+/* Progress Style: DEFAULT */
+.react-toast-progress.default .react-toast-progress-fill {
+  background: var(--progress-default);
+}
+
+/* Progress Style: FANCY - with animated gradient effect */
+.react-toast-progress.fancy {
+  height: 4px;
+}
+
+.react-toast-progress.fancy .react-toast-progress-fill {
+  background: linear-gradient(90deg, #f59e0b, #ef4444, #3b82f6, #10b981);
+  background-size: 300% 100%;
+  animation: shimmer 2s linear infinite;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* Progress Style: GRADIENT-WAVE */
+.react-toast-progress.gradient-wave .react-toast-progress-fill {
+  background: linear-gradient(90deg, 
+    rgba(79, 70, 229, 1) 0%, 
+    rgba(168, 85, 247, 0.8) 50%, 
+    rgba(236, 72, 153, 1) 100%);
+  background-size: 200% 100%;
+  animation: wave-shift 2s linear infinite;
+}
+
+@keyframes wave-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Progress Style: PULSE - with pulsating effect */
+.react-toast-progress.pulse .react-toast-progress-fill {
+  background: var(--progress-default);
+  animation: pulse-effect 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-effect {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+/* Progress Style: PARTICLES - with moving particles */
+.react-toast-progress.particles .react-toast-progress-fill {
+  background: rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.react-toast-progress.particles .react-toast-progress-fill::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255,255,255,0.3) 1px, transparent 1px);
+  background-size: 4px 4px, 6px 6px, 8px 8px;
+  background-position: 0 0, 2px 2px, 4px 0;
+  animation: particle-move 1s linear infinite;
+}
+
+@keyframes particle-move {
+  from { background-position: 0 0, 2px 2px, 4px 0; }
+  to { background-position: -12px 0, -10px 2px, -8px 0; }
+}
+
+/* Progress Style: LIQUID - with wavy liquid motion */
+.react-toast-progress.liquid .react-toast-progress-fill {
+  background: var(--progress-default);
+  height: 6px;
+  margin-bottom: -3px;
+  border-radius: 0 3px 3px 0;
+  position: relative;
+}
+
+.react-toast-progress.liquid .react-toast-progress-fill::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 10px;
+  background: var(--progress-default);
+  border-radius: 3px;
+  animation: liquid-drip 2s ease-in-out infinite;
+}
+
+@keyframes liquid-drip {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px) scale(1.2, 0.8); }
+}
+
+/* Progress Style: 3D - with depth effect */
+.react-toast-progress.three-d .react-toast-progress-fill {
+  background: linear-gradient(to bottom, 
+    rgba(255, 255, 255, 0.8),
+    var(--progress-default) 30%, 
+    rgba(0, 0, 0, 0.2) 100%);
+  height: 6px;
+  margin-bottom: -3px;
+  box-shadow: 
+    0 2px 3px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  border-radius: 0 2px 2px 0;
+}
+
+/* Progress Style: DASHED - with segmented line */
+.react-toast-progress.dashed .react-toast-progress-fill {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--progress-default) 0px,
+    var(--progress-default) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  background-size: 12px 100%;
+  animation: dash-move 1s linear infinite;
+}
+
+@keyframes dash-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 12px 0; }
+}
+
+/* Progress Style: GLOW - with glowing effect */
+.react-toast-progress.glow .react-toast-progress-fill {
+  background: var(--progress-default);
+  box-shadow: 
+    0 0 5px var(--progress-default),
+    0 0 10px var(--progress-default),
+    0 0 15px var(--progress-default);
+  animation: glow-pulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes glow-pulse {
+  0% { opacity: 0.7; filter: brightness(1); }
+  100% { opacity: 1; filter: brightness(1.5); }
+}
+
+/* Progress Style: RAINBOW - with dynamic color gradient */
+.react-toast-progress.rainbow .react-toast-progress-fill {
+  background-image: linear-gradient(
+    90deg, 
+    #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3
+  );
+  background-size: 200% 100%;
+  animation: rainbow-shift 2s linear infinite;
+}
+
+@keyframes rainbow-shift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* Progress Style: DATA-FLOW - with digital data animation */
+.react-toast-progress.data-flow .react-toast-progress-fill {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--progress-default) 20%,
+    var(--progress-default) 80%,
+    transparent 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.react-toast-progress.data-flow .react-toast-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(
+      90deg,
+      transparent, transparent 30%,
+      rgba(255, 255, 255, 0.6) 50%,
+      transparent 70%, transparent
+    );
+  background-size: 50% 100%;
+  animation: data-pulse 1.5s linear infinite;
+}
+
+@keyframes data-pulse {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Progress Style: STEP-PROGRESS - with step-by-step indicators */
+.react-toast-progress.step-progress .react-toast-progress-fill {
+  background-color: transparent;
+  background-image: 
+    linear-gradient(90deg, var(--progress-default) 70%, transparent 0),
+    linear-gradient(90deg, var(--progress-default) 70%, transparent 0),
+    linear-gradient(90deg, var(--progress-default) 70%, transparent 0);
+  background-size: 16.6% 100%;
+  background-repeat: repeat-x;
+  animation: step-move 3s linear infinite;
+}
+
+@keyframes step-move {
+  0% { background-position: 0 0, 33.3% 0, 66.6% 0; }
+  100% { background-position: 16.6% 0, 50% 0, 83.3% 0; }
+}
+
+/* Variant-specific progress styles */
+.react-toast[data-variant="success"] .react-toast-progress-fill {
+  background-color: var(--progress-success);
+}
+
+.react-toast[data-variant="error"] .react-toast-progress-fill {
+  background-color: var(--progress-error);
+}
+
+.react-toast[data-variant="warning"] .react-toast-progress-fill {
+  background-color: var(--progress-warning);
+}
+
+.react-toast[data-variant="info"] .react-toast-progress-fill {
+  background-color: var(--progress-info);
+}
+
+.react-toast[data-variant="loading"] .react-toast-progress-fill {
+  background-color: var(--progress-loading);
+}
+
+/* Floating effect */
+.react-toast-floating {
+  animation: float 2s ease-in-out infinite;
+}
+
+/* Ripple effect */
+.react-toast-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.react-toast-ripple-element {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: scale(0);
+  animation: ripple-animation 0.6s linear;
+  background-color: var(--toast-ripple-light);
+  opacity: 0.6;
+  width: 100px;
+  height: 100px;
+  margin-left: -50px;
+  margin-top: -50px;
+}
+
+[data-theme="dark"] .react-toast-ripple-element {
+  background-color: var(--toast-ripple-dark);
+}
+
+/* Content layout */
+.react-toast-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0; /* Add vertical padding for content */
+}
+
+.react-toast-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin: 0;
+  padding-right: 24px; /* Make space for close button */
+}
+
+.react-toast-description {
+  font-size: 13px;
+  opacity: 0.9;
+  margin: 0;
+  padding-right: 24px; /* Make space for close button */
+}
+
+/* Improved icon styling */
+.react-toast-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px; /* Better vertical alignment */
+}
+
+/* Fixed close button positioning */
+.react-toast-close {
+  position: absolute;
+  top: 12px; /* Vertically aligned with padding */
+  right: 12px; /* Horizontally aligned with padding */
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  color: currentColor;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+  padding: 0; /* Remove any padding */
+}
+
+.react-toast-close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.react-toast-close:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Improved close button icon alignment */
+.react-toast-close svg {
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin: auto;
+}
+
+/* Dark mode close button adjustments */
+.react-toast[data-theme="dark"] .react-toast-close {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.react-toast[data-theme="dark"] .react-toast-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Emoji styling */
+.toast-emoji {
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .react-toast-container {
+    width: calc(100vw - 32px);
+    max-width: 380px;
+  }
+  
+  .react-toast {
+    padding: 12px 16px; /* Consistent padding */
+    font-size: 13px;
+  }
+}
+
+/* Animations */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes ripple-animation {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Loading spinner animation */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Soft shadow utility */
+.toast-soft-shadow {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.react-toast[data-theme="dark"] .toast-soft-shadow {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
+/* Print styles */
+@media print {
+  .react-toast-container {
+    display: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .react-toast {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .react-toast {
+    transition: none;
+  }
+  
+  .react-toast-floating,
+  .react-toast-progress.fancy,
+  .animate-spin,
+  .react-toast[data-style="gradient"],
+  .react-toast[data-style="shimmer"]::before,
+  .react-toast[data-style="neon"],
+  .react-toast[data-style="confetti"]::before {
+    animation: none !important;
+  }
+  
+  .react-toast-ripple-element {
+    animation: none;
+    opacity: 0;
+  }
+}

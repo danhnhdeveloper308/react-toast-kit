@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useToastStore } from './toast';
 import type { ToastTheme, ToastPosition, ToastAnimation, ToastStyle } from './toast';
 import ToastPortal from './ToastPortal';
@@ -46,17 +46,49 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
   enableAccessibleAnnouncements = true,
   enableDevMode = false,
 }) => {
-  const { setTheme, setMaxToasts, effectiveTheme } = useToastStore();
+  // Track component lifecycle using refs to prevent state updates after unmount
+  const isMounted = useRef(false);
+  const [initialized, setInitialized] = useState(false);
   
+  // Access store methods - this must be called in every render
+  const { setTheme, setMaxToasts, effectiveTheme, theme: currentTheme } = useToastStore();
+
+  // Single effect for initialization - this runs once
   useEffect(() => {
-    setTheme(theme);
-    setMaxToasts(maxToasts);
+    isMounted.current = true;
     
-    // Initialize dev mode if enabled
+    // Only set theme and maxToasts if they differ from current values
+    if (currentTheme !== theme) {
+      setTheme(theme);
+    }
+    
+    setMaxToasts(maxToasts);
+
+    // Set up dev mode if enabled
     if (enableDevMode && typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       (window as any).__TOAST_DEV_MODE__ = true;
     }
-  }, [theme, maxToasts, setTheme, setMaxToasts, enableDevMode]);
+    
+    setInitialized(true);
+    
+    return () => {
+      isMounted.current = false;
+    };
+  }, []); // Empty deps for initial setup only
+
+  // Track theme changes
+  useEffect(() => {
+    if (initialized && isMounted.current) {
+      setTheme(theme);
+    }
+  }, [theme, initialized, setTheme]);
+  
+  // Track maxToasts changes
+  useEffect(() => {
+    if (initialized && isMounted.current) {
+      setMaxToasts(maxToasts);
+    }
+  }, [maxToasts, initialized, setMaxToasts]);
 
   const contextValue: ToastProviderContext = {
     theme,

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useToastStore } from './toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Toast, ToastPosition, ToastAnimation, ToastStyle } from './toast';
+import type { TargetAndTransition } from 'framer-motion';
 
 /**
  * Finds the highest z-index in use in the document with caching
@@ -81,6 +82,7 @@ const SVGIcon = memo(({
     />
   );
 });
+SVGIcon.displayName = 'SVGIcon';
 
 // Accessibility announcer component
 const AccessibilityAnnouncer = memo(({ toasts }: { toasts: Toast[] }) => {
@@ -141,6 +143,7 @@ const AccessibilityAnnouncer = memo(({ toasts }: { toasts: Toast[] }) => {
     </div>
   );
 });
+AccessibilityAnnouncer.displayName = 'AccessibilityAnnouncer';
 
 // Hook for swipe gesture detection
 const useSwipeGesture = (
@@ -301,11 +304,15 @@ const ToastItem = memo(({
     }
   }, [toast.variant, toastTheme]);
 
-  // Memoize animation variants with custom animation support
+  // Memoize animation variants with proper typing
   const animationVariants = useMemo(() => {
-    // Use custom animation if provided
+    // Use custom animation if provided and properly typed
     if (toast.customAnimation) {
-      return toast.customAnimation;
+      return {
+        initial: toast.customAnimation.initial as TargetAndTransition,
+        animate: toast.customAnimation.animate as TargetAndTransition,
+        exit: toast.customAnimation.exit as TargetAndTransition
+      };
     }
 
     const animationType = toast.animation || animation;
@@ -333,11 +340,11 @@ const ToastItem = memo(({
     }
 
     if (animationType === 'bounce') {
-      let initial = {};
-      if (isTop) initial = { opacity: 0, y: -80, scale: 0.9 };
-      else if (isBottom) initial = { opacity: 0, y: 80, scale: 0.9 };
-      else if (isLeft) initial = { opacity: 0, x: -80, scale: 0.9 };
-      else if (isRight) initial = { opacity: 0, x: 80, scale: 0.9 };
+      const initial: TargetAndTransition = { opacity: 0, scale: 0.9 };
+      if (isTop) Object.assign(initial, { y: -80 });
+      else if (isBottom) Object.assign(initial, { y: 80 });
+      else if (isLeft) Object.assign(initial, { x: -80 });
+      else if (isRight) Object.assign(initial, { x: 80 });
 
       return {
         initial,
@@ -407,28 +414,28 @@ const ToastItem = memo(({
     }
 
     // Default slide animation
-    let initial = {};
-    let exit = {};
+    const initial: TargetAndTransition = { opacity: 0 };
+    const exit: TargetAndTransition = { opacity: 0 };
 
     if (isTop) {
-      initial = { opacity: 0, y: -20 };
-      exit = { opacity: 0, y: -20 };
+      Object.assign(initial, { y: -20 });
+      Object.assign(exit, { y: -20 });
     } else if (isBottom) {
-      initial = { opacity: 0, y: 20 };
-      exit = { opacity: 0, y: 20 };
+      Object.assign(initial, { y: 20 });
+      Object.assign(exit, { y: 20 });
     } else if (isLeft) {
-      initial = { opacity: 0, x: -20 };
-      exit = { opacity: 0, x: -20 };
+      Object.assign(initial, { x: -20 });
+      Object.assign(exit, { x: -20 });
     } else if (isRight) {
-      initial = { opacity: 0, x: 20 };
-      exit = { opacity: 0, x: 20 };
+      Object.assign(initial, { x: 20 });
+      Object.assign(exit, { x: 20 });
     } else if (isCenter) {
       if (isTop) {
-        initial = { opacity: 0, y: -20 };
-        exit = { opacity: 0, y: -20 };
+        Object.assign(initial, { y: -20 });
+        Object.assign(exit, { y: -20 });
       } else {
-        initial = { opacity: 0, y: 20 };
-        exit = { opacity: 0, y: 20 };
+        Object.assign(initial, { y: 20 });
+        Object.assign(exit, { y: 20 });
       }
     }
 
@@ -485,19 +492,6 @@ const ToastItem = memo(({
     return `${baseClass} bg-white/30`;
   }, [toast.progressBarStyle, toast.variant, toastTheme]);
 
-  // Memoize close button classes
-  const closeButtonClasses = useMemo(() => {
-    if (toast.variant === 'custom') return '';
-
-    if (!toast.variant || toast.variant === 'default') {
-      return toastTheme === 'dark'
-        ? 'bg-gray-700 text-gray-300 hover:text-white'
-        : 'bg-gray-200 text-gray-600 hover:text-gray-800';
-    }
-
-    return 'bg-white/25 backdrop-blur-sm text-white/90 hover:bg-white/35 hover:text-white';
-  }, [toast.variant, toastTheme]);
-
   // Memoize emoji component
   const emojiComponent = useMemo(() => {
     if (!toast.emoji) return null;
@@ -509,8 +503,8 @@ const ToastItem = memo(({
     );
   }, [toast.emoji]);
 
-  // Get icon string
-  const iconString = (toast as any).iconString;
+  // Get icon string with proper typing
+  const iconString = toast.iconString;
 
   return (
     <motion.div
@@ -520,8 +514,7 @@ const ToastItem = memo(({
       animate={animationVariants.animate}
       exit={animationVariants.exit}
       transition={{
-        duration: (toast as any).updating ? 0.1 : 0.2,
-        ...animationVariants.transition
+        duration: toast.updating ? 0.1 : 0.2
       }}
       layout
     >
@@ -613,19 +606,8 @@ const ToastItem = memo(({
       </div>
     </motion.div>
   );
-}, (prevProps, nextProps) => {
-  // Custom comparison to prevent unnecessary re-renders
-  return (
-    prevProps.toast.id === nextProps.toast.id &&
-    prevProps.toast.updating === nextProps.toast.updating &&
-    prevProps.toastTheme === nextProps.toastTheme &&
-    prevProps.animation === nextProps.animation &&
-    prevProps.position === nextProps.position &&
-    prevProps.defaultStyle === nextProps.defaultStyle &&
-    JSON.stringify(prevProps.toast.style) === JSON.stringify(nextProps.toast.style) &&
-    prevProps.toast.className === nextProps.toast.className
-  );
 });
+ToastItem.displayName = 'ToastItem';
 
 // Enhanced Toast container with better memoization
 const ToastContainer = memo(({
@@ -673,18 +655,8 @@ const ToastContainer = memo(({
       ))}
     </AnimatePresence>
   </div>
-), (prevProps, nextProps) => {
-  // Only re-render if toasts array or theme changed
-  return (
-    prevProps.toasts.length === nextProps.toasts.length &&
-    prevProps.toasts.every((toast, index) =>
-      toast.id === nextProps.toasts[index]?.id &&
-      toast.updating === nextProps.toasts[index]?.updating
-    ) &&
-    prevProps.toastTheme === nextProps.toastTheme &&
-    prevProps.position === nextProps.position
-  );
-});
+));
+ToastContainer.displayName = 'ToastContainer';
 
 /**
  * Enhanced ToastPortal component with performance optimizations
@@ -917,5 +889,6 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
 
   return createPortal(portalContent, portalElement);
 };
+ToastPortal.displayName = 'ToastPortal';
 
 export default memo(ToastPortal);

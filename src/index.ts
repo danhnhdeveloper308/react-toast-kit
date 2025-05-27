@@ -16,7 +16,7 @@ const injectCSS = () => {
   try {
     const style = document.createElement('style');
     style.id = 'react-toast-kit-styles';
-    style.setAttribute('data-toast-kit-version', '1.0.4');
+    style.setAttribute('data-toast-kit-version', '1.0.3');
     
     // Inject CSS directly instead of reading from file
     // This content will be replaced by build script
@@ -38,9 +38,7 @@ const injectCSS = () => {
     
     cssInjected = true;
     
-    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
-      console.log('🍞 React Toast Kit: CSS automatically injected!');
-    }
+    // Removed console.log for production
   } catch (error) {
     console.warn('[react-toast-kit] Could not auto-inject CSS:', error);
   }
@@ -58,9 +56,6 @@ if (typeof window !== 'undefined') {
 
 // Enhanced version check for development
 if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
-  const version = '1.0.4'; // Updated version
-  console.log(`🍞 React Toast Kit v${version} loaded - CSS automatically injected!`);
-  
   // Development mode warnings
   if (typeof window !== 'undefined') {
     // Check for common conflicts

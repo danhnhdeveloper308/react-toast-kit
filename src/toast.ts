@@ -31,10 +31,10 @@ export type ProgressBarStyle =
 
 // Enhanced interface for custom animations
 export interface CustomAnimation {
-  initial: any;
-  animate: any;
-  exit: any;
-  transition?: any;
+  initial: Record<string, unknown>;
+  animate: Record<string, unknown>;
+  exit: Record<string, unknown>;
+  transition?: Record<string, unknown>;
 }
 
 // Plugin interface for extensibility
@@ -171,9 +171,17 @@ const getConfigValue = <T,>(key: string, defaultValue: T): T => {
   if (typeof window === 'undefined') return defaultValue;
   
   try {
-    const config = (window as any).__TOAST_CONFIG__;
-    if (config && key in config) {
-      return config[key] as T;
+    // Fix for Window type issues by using proper interface extension
+    interface WindowWithToastConfig extends Window {
+      __TOAST_CONFIG__?: Record<string, unknown>;
+    }
+    
+    const windowWithConfig = window as WindowWithToastConfig;
+    
+    if (windowWithConfig.__TOAST_CONFIG__ && 
+        typeof windowWithConfig.__TOAST_CONFIG__ === 'object' && 
+        key in windowWithConfig.__TOAST_CONFIG__) {
+      return (windowWithConfig.__TOAST_CONFIG__ as Record<string, T>)[key];
     }
   } catch (error) {
     console.warn(`React Toast Kit: Failed to get config value for ${key}`, error);
@@ -183,13 +191,13 @@ const getConfigValue = <T,>(key: string, defaultValue: T): T => {
 };
 
 // Configuration validation
-const validateConfig = (config: any): any => {
-  if (config.maxToasts && config.maxToasts < 1) {
+const validateConfig = (config: Record<string, unknown>): Record<string, unknown> => {
+  if (config.maxToasts && typeof config.maxToasts === 'number' && config.maxToasts < 1) {
     console.warn('React Toast Kit: maxToasts should be at least 1, setting to 1');
     config.maxToasts = 1;
   }
   
-  if (config.defaultDuration && config.defaultDuration < 0) {
+  if (config.defaultDuration && typeof config.defaultDuration === 'number' && config.defaultDuration < 0) {
     console.warn('React Toast Kit: defaultDuration should be positive, setting to 4000ms');
     config.defaultDuration = 4000;
   }
@@ -541,20 +549,20 @@ const createToast = (options: ToastOptions | string): string => {
     
     const defaultOptions: ToastOptions = {
       variant: 'default',
-      duration: configuredDefaults.duration,
-      position: configuredDefaults.position,
+      duration: configuredDefaults.duration as number,
+      position: configuredDefaults.position as ToastPosition,
       dismissible: true,
       pauseOnHover: true,
       dismissOnClick: false,
-      theme: configuredDefaults.theme,
-      animation: configuredDefaults.animation,
-      visualStyle: configuredDefaults.style,
+      theme: configuredDefaults.theme as ToastTheme,
+      animation: configuredDefaults.animation as ToastAnimation,
+      visualStyle: configuredDefaults.style as ToastStyle,
       priority: 'normal',
       swipeToDismiss: true,
     };
     
     // Handle string case
-    let toastOptions: ToastOptions = typeof options === 'string' 
+    const toastOptions: ToastOptions = typeof options === 'string' 
       ? { description: options } 
       : { ...options };
       
@@ -562,7 +570,7 @@ const createToast = (options: ToastOptions | string): string => {
     const variant = toastOptions.variant || defaultOptions.variant;
     if (!toastOptions.icon && !toastOptions.emoji && variant !== 'custom') {
       if (variant && variant in iconStrings) {
-        (toastOptions as any).iconString = iconStrings[variant as keyof typeof iconStrings];
+        (toastOptions as Record<string, unknown>).iconString = iconStrings[variant as keyof typeof iconStrings];
       }
     }
     
@@ -600,7 +608,7 @@ type ToastHandler = {
     options: {
       loading: ToastOptions | string;
       success: ((data: T) => ToastOptions | string) | ToastOptions | string;
-      error: ((error: any) => ToastOptions | string) | ToastOptions | string;
+      error: ((error: unknown) => ToastOptions | string) | ToastOptions | string;
     }
   ) => Promise<T>;
   update: (id: string, options: Partial<ToastOptions>) => void;
@@ -631,7 +639,7 @@ toast.promise = async <T>(
   options: {
     loading: ToastOptions | string;
     success: ((data: T) => ToastOptions | string) | ToastOptions | string;
-    error: ((error: any) => ToastOptions | string) | ToastOptions | string;
+    error: ((error: unknown) => ToastOptions | string) | ToastOptions | string;
   }
 ): Promise<T> => {
   const id = createToast({
@@ -711,6 +719,16 @@ toast.clearAll = () => {
 };
 
 // Development tools (only available in development)
+type DevTools = {
+  getActiveToasts: () => Toast[];
+  clearAll: () => void;
+  debugInfo: () => void;
+  getStore: () => ToastState;
+  simulateError: () => void;
+  simulateSuccess: () => void;
+};
+
+// Development tools (only available in development)
 export const toastDevTools = typeof process !== 'undefined' && process.env.NODE_ENV === 'development' ? {
   getActiveToasts: () => useToastStore.getState().toasts,
   clearAll: () => useToastStore.getState().clearAllToasts(),
@@ -738,7 +756,7 @@ export const toastDevTools = typeof process !== 'undefined' && process.env.NODE_
   simulateSuccess: () => {
     toast.success('This is a test success toast for debugging');
   }
-} : {};
+} as DevTools : {} as DevTools;
 
 // Plugin registration helpers
 export const registerPlugin = (plugin: ToastPlugin) => {

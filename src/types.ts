@@ -33,7 +33,7 @@ export type ToastHandler = {
     options: {
       loading: ToastOptions | string;
       success: ((data: T) => ToastOptions | string) | ToastOptions | string;
-      error: ((error: any) => ToastOptions | string) | ToastOptions | string;
+      error: ((error: unknown) => ToastOptions | string) | ToastOptions | string;
     }
   ) => Promise<T>;
   update: (id: ToastId, options: Partial<ToastOptions>) => void;
