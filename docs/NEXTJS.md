@@ -1,480 +1,263 @@
-# Next.js Integration Guide
+# Sử dụng React Toast Kit với Next.js
 
-This guide will help you integrate React Toast Kit with Next.js projects, including proper setup for both Pages Router and App Router.
+React Toast Kit hoàn toàn tương thích với Next.js, bao gồm cả App Router và Pages Router. Tài liệu này sẽ hướng dẫn chi tiết cách tích hợp thư viện với Next.js.
 
-## Important: React Toast Kit is Framework-Agnostic
-
-React Toast Kit is designed to be framework-agnostic and doesn't include `"use client"` directives in its components. This means:
-
-1. You need to create your own client component wrappers in Next.js App Router projects
-2. You'll benefit from better tree-shaking and more control over client/server boundaries 
-3. The library works in any React environment without framework-specific optimizations affecting bundle size
-
-## Quick Start
-
-### 1. Install the package
+## Cài đặt
 
 ```bash
+# Với npm
 npm install react-toast-kit
-# or
+
+# Với yarn
 yarn add react-toast-kit
-# or
+
+# Với pnpm
 pnpm add react-toast-kit
 ```
 
-### 2. Import CSS Styles
+## Tích hợp cơ bản
 
-Add the CSS import to your main CSS file or at the top of your layout file:
+### App Router (Next.js 13+)
 
-```css
-/* In your globals.css or main CSS file */
-@import 'react-toast-kit/dist/styles.css';
-```
-
-Or import directly in your layout component:
+Trong App Router của Next.js, bạn cần đảm bảo các component liên quan đến client-side như `ToastProvider` và `ToastPortal` được đánh dấu là client components:
 
 ```tsx
-// In your layout.tsx or _app.tsx
-import 'react-toast-kit/dist/styles.css';
-```
-
-### 3. Setup for Next.js App Router (Recommended)
-
-For Next.js 13+ with App Router, create a client wrapper component to handle client-side functionality properly.
-
-#### Create a Client Wrapper Component (Required)
-
-Create a file `components/ClientToastProvider.tsx`:
-
-```tsx
+// app/providers.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { ToastProvider } from 'react-toast-kit';
-import type { 
-  ToastPosition, 
-  ToastTheme, 
-  ToastAnimation, 
-  ToastStyle 
-} from 'react-toast-kit';
 
-interface ClientToastProviderProps {
-  children?: React.ReactNode;
-  defaultDuration?: number;
-  defaultPosition?: ToastPosition;
-  defaultTheme?: ToastTheme;
-  maxToasts?: number;
-  topOffset?: number;
-  bottomOffset?: number;
-  leftOffset?: number;
-  rightOffset?: number;
-  defaultAnimation?: ToastAnimation;
-  defaultStyle?: ToastStyle;
-  enableAccessibleAnnouncements?: boolean;
-  containerClassName?: string;
-  toastClassName?: string;
-  enableDevMode?: boolean;
-  onError?: (error: Error, context: string) => void;
-  suppressHydrationWarning?: boolean;
-}
-
-export function ClientToastProvider({ 
-  children, 
-  ...props 
-}: ClientToastProviderProps) {
-  const [mounted, setMounted] = useState(false);
-  
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  
-  // Prevent hydration mismatch by only rendering ToastProvider on client
-  if (!mounted) {
-    return <>{children}</>;
-  }
-  
+export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ToastProvider {...props}>
+    <ToastProvider>
       {children}
     </ToastProvider>
   );
 }
 ```
 
-#### Setup in Root Layout
-
-Add the provider to your `app/layout.tsx`:
+Sau đó sử dụng trong layout gốc:
 
 ```tsx
-import { ClientToastProvider } from '@/components/ClientToastProvider';
-// Import the CSS styles
-import 'react-toast-kit/dist/styles.css';
+// app/layout.tsx
+import { Providers } from './providers';
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <ClientToastProvider
-          defaultPosition="top-right"
-          defaultTheme="system"
-          maxToasts={3}
-          suppressHydrationWarning={true}
-        >
-          {children}
-        </ClientToastProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
 }
 ```
 
-### 4. Setup for Next.js Pages Router
+### Pages Router (Next.js < 13)
 
-For Next.js with Pages Router, add the provider to your `_app.tsx`:
+Với Pages Router, bạn có thể thêm `ToastProvider` vào `_app.tsx`:
 
 ```tsx
-import type { AppProps } from 'next/app';
+// pages/_app.tsx
+import { AppProps } from 'next/app';
 import { ToastProvider } from 'react-toast-kit';
-// Import the CSS styles
-import 'react-toast-kit/dist/styles.css';
 
-export default function App({ Component, pageProps }: AppProps) {
+function MyApp({ Component, pageProps }: AppProps) {
   return (
-    <ToastProvider
-      defaultPosition="top-right"
-      defaultTheme="system"
-      maxToasts={3}
-    >
+    <ToastProvider>
       <Component {...pageProps} />
+    </ToastProvider>
+  );
+}
+
+export default MyApp;
+```
+
+## Sử dụng DevTools với Next.js
+
+React Toast Kit cung cấp DevTools để giúp bạn debug và kiểm tra toast. Với Next.js, bạn cần đảm bảo DevTools chỉ chạy ở client-side.
+
+### App Router (Next.js 13+)
+
+Tạo một component client riêng cho DevTools:
+
+```tsx
+// app/components/ToastDevToolsClient.tsx
+'use client';
+
+import { ClientDevTools } from 'react-toast-kit/DevToolsWrapper';
+
+export default function ToastDevToolsClient() {
+  return <ClientDevTools />;
+}
+```
+
+Sau đó sử dụng nó trong layout hoặc page của bạn:
+
+```tsx
+// app/layout.tsx
+import ToastDevToolsClient from './components/ToastDevToolsClient';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+        {/* DevTools sẽ chỉ hiển thị trong development mode */}
+        <ToastDevToolsClient />
+      </body>
+    </html>
+  );
+}
+```
+
+### Pages Router (Next.js < 13)
+
+Với Pages Router, bạn có thể thêm DevTools vào `_app.tsx` tương tự:
+
+```tsx
+// pages/_app.tsx
+import { AppProps } from 'next/app';
+import { ToastProvider } from 'react-toast-kit';
+import dynamic from 'next/dynamic';
+
+// Import DevTools với dynamic import để đảm bảo nó chỉ chạy ở client-side
+const DevTools = dynamic(
+  () => import('react-toast-kit/DevToolsWrapper').then(mod => mod.default),
+  { ssr: false }
+);
+
+function MyApp({ Component, pageProps }: AppProps) {
+  return (
+    <ToastProvider>
+      <Component {...pageProps} />
+      <DevTools />
+    </ToastProvider>
+  );
+}
+
+export default MyApp;
+```
+
+## Sử dụng hook useToast
+
+Hook `useToast` có thể được sử dụng trong bất kỳ client component nào:
+
+```tsx
+// app/components/MyComponent.tsx
+'use client';
+
+import { useToast } from 'react-toast-kit';
+
+export default function MyComponent() {
+  const toast = useToast();
+
+  const handleClick = () => {
+    toast.success('Thành công!');
+  };
+
+  return (
+    <button onClick={handleClick}>
+      Hiển thị toast
+    </button>
+  );
+}
+```
+
+## Cấu hình toàn cục
+
+Bạn có thể cấu hình DevTools toàn cục:
+
+```tsx
+// app/providers.tsx
+'use client';
+
+import { ToastProvider } from 'react-toast-kit';
+import { configureDevTools } from 'react-toast-kit/DevToolsWrapper';
+
+// Bạn có thể bật DevTools thậm chí trong production
+configureDevTools({ enable: true });
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <ToastProvider>
+      {children}
     </ToastProvider>
   );
 }
 ```
 
-## Using Toasts in Client Components
+## Các tip khi sử dụng với Next.js
 
-### Creating a Client-Side Toast Hook (Recommended)
+1. **Server Components**: Không sử dụng `useToast` hook trong Server Components. Tạo một Client Component riêng biệt khi bạn cần sử dụng toast.
 
-For better organization, create a custom toast hook in a client component:
+2. **Hydration Errors**: Để tránh lỗi hydration, hãy đảm bảo rằng trạng thái toast giữa server và client là nhất quán, hoặc chỉ render ToastPortal ở phía client.
+
+3. **Dark Mode**: Khi sử dụng dark mode với Next.js và React Toast Kit, đảm bảo theme được đồng bộ giữa các thành phần.
 
 ```tsx
-// hooks/useClientToast.ts
+'use client';
+
+import { useTheme } from 'next-themes';
+import { ToastProvider } from 'react-toast-kit';
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  const { theme } = useTheme();
+  
+  return (
+    <ToastProvider theme={theme as 'light' | 'dark' | 'system'}>
+      {children}
+    </ToastProvider>
+  );
+}
+```
+
+4. **URLs trong Toast**: Khi hiển thị liên kết trong toast với Next.js, bạn nên sử dụng Next.js `Link` component:
+
+```tsx
 'use client';
 
 import { useToast } from 'react-toast-kit';
+import Link from 'next/link';
 
-export function useClientToast() {
-  return useToast();
-}
-```
-
-### Using Toasts in Client Components
-
-For components that use toasts, make sure they're client components:
-
-```tsx
-'use client';
-
-import { toast } from 'react-toast-kit';
-// or import your custom hook: import { useClientToast } from '@/hooks/useClientToast';
-
-export function MyClientComponent() {
-  const handleClick = () => {
-    toast.success('Hello from Next.js!');
-  };
+export default function MyComponent() {
+  const toast = useToast();
   
-  return (
-    <button onClick={handleClick}>
-      Show Toast
-    </button>
-  );
-}
-```
-
-### Handling Server Actions (App Router)
-
-You can use toasts with Server Actions by calling them in the client after the action completes:
-
-```tsx
-'use client';
-
-import { toast } from 'react-toast-kit';
-import { myServerAction } from '@/app/actions';
-
-export function ServerActionForm() {
-  const handleSubmit = async (formData: FormData) => {
-    try {
-      const result = await myServerAction(formData);
-      toast.success('Action completed successfully!');
-    } catch (error) {
-      toast.error('Action failed!');
-    }
-  };
-  
-  return (
-    <form action={handleSubmit}>
-      {/* form content */}
-    </form>
-  );
-}
-```
-
-## Alternative: Using the Next.js Specific Entry Point
-
-React Toast Kit provides a Next.js specific entry point with `"use client"` pre-applied:
-
-```tsx
-// In your client components
-'use client';
-import { toast, ToastProvider } from 'react-toast-kit/nextjs/client';
-
-// In your server components (only type imports and toast function)
-import { toast } from 'react-toast-kit/nextjs/server';
-import type { ToastOptions } from 'react-toast-kit/nextjs/server';
-```
-
-However, we recommend creating your own client wrapper as shown above for better control and customization.
-
-## Configuration Options
-
-### Theme Configuration
-
-```tsx
-<ClientToastProvider
-  defaultTheme="system" // "light" | "dark" | "system"
-  defaultPosition="top-right"
-  defaultAnimation="slide"
-  defaultStyle="solid"
->
-  {children}
-</ClientToastProvider>
-```
-
-### Custom Styling
-
-```tsx
-<ClientToastProvider
-  containerClassName="my-custom-container"
-  toastClassName="my-custom-toast"
-  topOffset={20}
-  rightOffset={20}
->
-  {children}
-</ClientToastProvider>
-```
-
-### Advanced Configuration
-
-```tsx
-<ClientToastProvider
-  maxToasts={5}
-  defaultDuration={4000}
-  enableAccessibleAnnouncements={true}
-  enableDevMode={process.env.NODE_ENV === 'development'}
-  onError={(error, context) => {
-    console.error(`Toast error in ${context}:`, error);
-  }}
->
-  {children}
-</ClientToastProvider>
-```
-
-## Common Patterns
-
-### Loading States
-
-```tsx
-'use client';
-
-import { toast } from 'react-toast-kit';
-
-export function AsyncOperation() {
-  const handleAsyncOperation = async () => {
-    const loadingToast = toast.loading('Processing...');
-    
-    try {
-      await someAsyncOperation();
-      toast.update(loadingToast, {
-        variant: 'success',
-        title: 'Success!',
-        description: 'Operation completed successfully'
-      });
-    } catch (error) {
-      toast.update(loadingToast, {
-        variant: 'error',
-        title: 'Error!',
-        description: 'Operation failed'
-      });
-    }
-  };
-  
-  return (
-    <button onClick={handleAsyncOperation}>
-      Start Operation
-    </button>
-  );
-}
-```
-
-### Promise-based Toasts
-
-```tsx
-'use client';
-
-import { toast } from 'react-toast-kit';
-
-export function PromiseExample() {
-  const handlePromise = () => {
-    const myPromise = fetch('/api/data').then(res => res.json());
-    
-    toast.promise(myPromise, {
-      loading: 'Fetching data...',
-      success: (data) => `Loaded ${data.length} items!`,
-      error: 'Failed to fetch data'
+  const showLinkToast = () => {
+    toast({
+      title: 'Thông báo',
+      component: (
+        <div>
+          Xem chi tiết <Link href="/details">tại đây</Link>
+        </div>
+      )
     });
   };
   
-  return (
-    <button onClick={handlePromise}>
-      Fetch Data
-    </button>
-  );
+  return <button onClick={showLinkToast}>Hiển thị toast với liên kết</button>;
 }
 ```
 
-## Troubleshooting
+## Tắt DevTools trong Production
 
-### Hydration Mismatches
+DevTools tự động bị tắt trong production mode, nhưng bạn có thể bật nó bằng URL query param `?devtools=true` hoặc bằng cách thiết lập localStorage:
 
-If you see hydration warnings, make sure you're:
+```js
+// Để bật DevTools trong production:
+localStorage.setItem('react-toast-kit:devtools', 'true');
 
-1. Using the `ClientToastProvider` pattern shown above
-2. Including `suppressHydrationWarning={true}` in the props
-3. Using the `mounted` state pattern to prevent rendering during SSR
-
-### TypeScript Issues
-
-Make sure to import types correctly:
-
-```tsx
-import type { ToastPosition, ToastTheme } from 'react-toast-kit';
+// Để tắt:
+localStorage.removeItem('react-toast-kit:devtools');
 ```
 
-### Styling Issues
-
-If toasts don't appear styled correctly:
-
-1. Make sure you've imported the styles: `import 'react-toast-kit/dist/styles.css'`
-2. If using Tailwind, ensure that React Toast Kit's styles aren't being overridden by your Tailwind configuration
-
-## Advanced Usage
-
-### Creating Component-Specific Toast Contexts
-
-For more complex applications, you might want to create component-specific toast contexts:
+Hoặc sử dụng API cấu hình:
 
 ```tsx
-// components/DashboardToasts.tsx
-'use client';
+import { configureDevTools } from 'react-toast-kit/DevToolsWrapper';
 
-import { createContext, useContext } from 'react';
-import { toast } from 'react-toast-kit';
+// Bật DevTools (ngay cả trong production)
+configureDevTools({ enable: true });
 
-const DashboardToastContext = createContext({
-  showSuccessToast: (message: string) => toast.success(`Dashboard: ${message}`),
-  showErrorToast: (message: string) => toast.error(`Dashboard: ${message}`),
-  // Add more specialized toast functions
-});
-
-export const useDashboardToast = () => useContext(DashboardToastContext);
-
-export function DashboardToastProvider({ children }) {
-  return (
-    <DashboardToastContext.Provider value={{
-      showSuccessToast: (message: string) => toast.success(`Dashboard: ${message}`),
-      showErrorToast: (message: string) => toast.error(`Dashboard: ${message}`),
-      // Add more specialized toast functions
-    }}>
-      {children}
-    </DashboardToastContext.Provider>
-  );
-}
+// Tắt DevTools (ngay cả trong development)
+configureDevTools({ enable: false });
 ```
-
-### Custom Toast Components
-
-```tsx
-'use client';
-
-import { toast } from 'react-toast-kit';
-
-const CustomToast = () => (
-  <div className="flex items-center space-x-2">
-    <span>🎉</span>
-    <span>Custom message!</span>
-  </div>
-);
-
-export function CustomToastExample() {
-  const showCustom = () => {
-    toast.custom(<CustomToast />, {
-      duration: 3000,
-      position: 'top-center'
-    });
-  };
-  
-  return (
-    <button onClick={showCustom}>
-      Show Custom Toast
-    </button>
-  );
-}
-```
-
-## Best Practices
-
-1. **Always mark toast-using components with `'use client'`** directive
-2. **Use the ClientToastProvider pattern** to prevent hydration mismatches
-3. **Place the provider high in the component tree** (layout.tsx or _app.tsx)
-4. **Create specialized hooks** for different parts of your application
-5. **Handle errors gracefully** with proper error messages
-6. **Consider accessibility** by keeping default announcements enabled
-
-## Migration from Other Libraries
-
-### From react-hot-toast
-
-React Toast Kit has a similar API to react-hot-toast:
-
-```tsx
-// react-hot-toast
-import toast from 'react-hot-toast';
-
-// React Toast Kit
-import { toast } from 'react-toast-kit';
-
-// Usage is very similar
-toast.success('Success!');
-toast.error('Error!');
-toast.loading('Loading...');
-```
-
-### From react-toastify
-
-```tsx
-// react-toastify
-import { toast } from 'react-toastify';
-
-// React Toast Kit
-import { toast } from 'react-toast-kit';
-
-// Similar patterns
-toast.success('Success message');
-toast.error('Error message');
-```
-
-The main difference is in the provider setup and some advanced configuration options.

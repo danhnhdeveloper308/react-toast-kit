@@ -7,7 +7,7 @@ export type {
   ToastTheme,
   ToastAnimation,
   ToastStyle,
-  ProgressBarStyle,  // Add the missing ProgressBarStyle export
+  ProgressBarStyle,
   CustomAnimation,
   ToastPlugin,
   StrictToastOptions
@@ -15,7 +15,7 @@ export type {
 
 // Additional utility types for better TypeScript experience
 import type { JSX } from 'react';
-import type { ToastOptions, Toast, ToastPosition, ToastTheme, ToastAnimation, ToastStyle, ToastPlugin } from './toast';
+import type { ToastOptions, Toast, ToastPosition, ToastTheme, ToastAnimation, ToastStyle, ToastPlugin, ProgressBarStyle } from './toast';
 
 export type ToastId = string;
 
@@ -41,19 +41,54 @@ export type ToastHandler = {
   clearAll: () => void;
 };
 
-// Provider props interface
+// Enhanced Provider props interface with all the new configuration options
 export interface ToastProviderProps {
   children?: React.ReactNode;
+  
+  // Basic configuration
   theme?: ToastTheme;
   position?: ToastPosition;
   maxToasts?: number;
+  
+  // Default styling options
   defaultAnimation?: ToastAnimation;
   defaultStyle?: ToastStyle;
+  defaultDuration?: number;
+  
+  // Default behavior options
+  defaultDismissible?: boolean;
+  defaultPauseOnHover?: boolean;
+  defaultDismissOnClick?: boolean;
+  
+  // Progress bar defaults
+  defaultProgressBarStyle?: ProgressBarStyle;
+  defaultProgressBarColor?: string;
+  defaultProgressBarPosition?: 'top' | 'bottom' | 'left' | 'right';
+  defaultProgressBarThickness?: number;
+  defaultProgressAnimation?: 'linear' | 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'spring';
+  
+  // Advanced defaults
+  defaultFloating?: boolean;
+  defaultRippleEffect?: boolean;
+  defaultSwipeToDismiss?: boolean;
+  defaultPriority?: 'low' | 'normal' | 'high';
+  defaultStagger?: number;
+  
+  // Container styling
   containerClassName?: string;
   topOffset?: number;
   bottomOffset?: number;
   leftOffset?: number;
   rightOffset?: number;
+  
+  // Features
+  enableAccessibleAnnouncements?: boolean;
+  enableDevMode?: boolean;
+  suppressHydrationWarning?: boolean;
+  
+  // Global overrides (apply to all toasts unless explicitly overridden)
+  globalClassName?: string;
+  globalStyle?: React.CSSProperties;
 }
 
 // Hook return types
@@ -82,7 +117,7 @@ export interface UseToastReturn {
   };
 }
 
-// Toast portal props interface
+// Enhanced Toast portal props interface
 export interface ToastPortalProps {
   containerClassName?: string;
   topOffset?: number;
@@ -91,6 +126,8 @@ export interface ToastPortalProps {
   rightOffset?: number;
   defaultAnimation?: ToastAnimation;
   defaultStyle?: ToastStyle;
+  enableAccessibleAnnouncements?: boolean;
+  suppressHydrationWarning?: boolean;
 }
 
 // Event types for callbacks
@@ -102,14 +139,38 @@ export interface ToastEvent {
   timestamp: number;
 }
 
-// Configuration types
+// Enhanced configuration types with all the new options
 export interface ToastConfig {
+  // Basic options
   defaultDuration?: number;
   defaultPosition?: ToastPosition;
   defaultTheme?: ToastTheme;
   defaultAnimation?: ToastAnimation;
   defaultStyle?: ToastStyle;
   maxToasts?: number;
+  
+  // Behavior options
+  defaultDismissible?: boolean;
+  defaultPauseOnHover?: boolean;
+  defaultDismissOnClick?: boolean;
+  
+  // Progress bar options
+  defaultProgressBarStyle?: ProgressBarStyle;
+  defaultProgressBarColor?: string;
+  defaultProgressBarPosition?: 'top' | 'bottom' | 'left' | 'right';
+  defaultProgressBarThickness?: number;
+  defaultProgressAnimation?: 'linear' | 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'spring';
+  
+  // Advanced options
+  defaultFloating?: boolean;
+  defaultRippleEffect?: boolean;
+  defaultSwipeToDismiss?: boolean;
+  defaultPriority?: 'low' | 'normal' | 'high';
+  defaultStagger?: number;
+  
+  // Global styling
+  globalClassName?: string;
+  globalStyle?: React.CSSProperties;
 }
 
 // Plugin development types
@@ -134,4 +195,32 @@ export interface ToastA11yProps {
   'aria-live'?: 'polite' | 'assertive' | 'off';
   'aria-label'?: string;
   'aria-describedby'?: string;
+}
+
+// Provider context types
+export interface ToastProviderContext {
+  theme: ToastTheme;
+  effectiveTheme: 'light' | 'dark';
+  position: ToastPosition;
+  maxToasts: number;
+  defaultAnimation: ToastAnimation;
+  defaultStyle: ToastStyle;
+  
+  // Extended defaults
+  defaultDuration: number;
+  defaultDismissible: boolean;
+  defaultPauseOnHover: boolean;
+  defaultDismissOnClick: boolean;
+  defaultProgressBarStyle?: ProgressBarStyle;
+  defaultProgressBarColor?: string;
+  defaultProgressBarPosition: 'top' | 'bottom' | 'left' | 'right';
+  defaultProgressBarThickness: number;
+  defaultProgressAnimation: 'linear' | 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'spring';
+  defaultFloating: boolean;
+  defaultRippleEffect: boolean;
+  defaultSwipeToDismiss: boolean;
+  defaultPriority: 'low' | 'normal' | 'high';
+  defaultStagger: number;
+  globalClassName?: string;
+  globalStyle?: React.CSSProperties;
 }

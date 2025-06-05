@@ -29,6 +29,9 @@ async function createFrameworkEntryPoints() {
         // Create Next.js specific entry points
         createNextJSEntryPoints(distDir, cssContent);
         
+        // Ensure DevTools entry points are properly built
+        processDevToolsEntryPoints(distDir);
+        
         // Update package.json to include framework-specific exports
         updatePackageExports();
         
@@ -182,6 +185,20 @@ function replaceInjectionPlaceholder(content, cssContent) {
     return modifiedContent;
 }
 
+// Process DevTools entry points to ensure they don't bundle unnecessary code
+function processDevToolsEntryPoints(distDir) {
+    console.log('🔧 Processing DevTools entry points...');
+    
+    const devtoolsMjsPath = path.join(distDir, 'devtools-entry.mjs');
+    const devtoolsCjsPath = path.join(distDir, 'devtools-entry.cjs');
+    
+    if (fs.existsSync(devtoolsMjsPath) && fs.existsSync(devtoolsCjsPath)) {
+        console.log('✅ Verified DevTools entry points');
+    } else {
+        console.warn('⚠️ DevTools entry points missing or incomplete');
+    }
+}
+
 // Create Next.js specific entry points
 function createNextJSEntryPoints(distDir, cssContent) {
     console.log('🔧 Creating Next.js specific entry points...');
@@ -272,6 +289,15 @@ function updatePackageExports() {
         // Ensure we have the correct exports
         if (!packageJson.exports) {
             packageJson.exports = {};
+        }
+        
+        // Ensure we have DevTools export
+        if (!packageJson.exports["./devtools"]) {
+            packageJson.exports["./devtools"] = {
+                "types": "./dist/devtools-entry.d.ts",
+                "import": "./dist/devtools-entry.mjs",
+                "require": "./dist/devtools-entry.cjs"
+            };
         }
 
         // Ensure we have export for styles.css

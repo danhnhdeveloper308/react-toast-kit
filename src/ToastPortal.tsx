@@ -1,9 +1,11 @@
-import React, { useEffect, useState, memo, useRef, useCallback, useMemo } from 'react';
+import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { useToastStore } from './toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Toast, ToastPosition, ToastAnimation, ToastStyle } from './toast';
 import type { TargetAndTransition } from 'framer-motion';
+
+const { useEffect, useState, memo, useRef, useCallback, useMemo } = React;
 
 /**
  * Finds the highest z-index in use in the document with caching
@@ -51,6 +53,7 @@ interface ToastPortalProps {
   defaultAnimation?: ToastAnimation;
   defaultStyle?: ToastStyle;
   enableAccessibleAnnouncements?: boolean;
+  suppressHydrationWarning?: boolean;
 }
 
 // Device breakpoints with enhanced detection
@@ -280,36 +283,41 @@ const ToastItem = memo(({
   // Memoize variant classes
   const variantClasses = useMemo(() => {
     const isDark = toastTheme === 'dark';
-
-    switch (toast.variant) {
-      case 'success':
-        return isDark
-          ? 'bg-green-700 text-white border border-green-600'
-          : 'bg-green-500 text-white';
-      case 'error':
-        return isDark
-          ? 'bg-red-700 text-white border border-red-600'
-          : 'bg-red-500 text-white';
-      case 'warning':
-        return isDark
-          ? 'bg-amber-700 text-white border border-amber-600'
-          : 'bg-amber-500 text-white';
-      case 'info':
-        return isDark
-          ? 'bg-blue-700 text-white border border-blue-600'
-          : 'bg-blue-500 text-white';
-      case 'loading':
-        return isDark
-          ? 'bg-gray-700 text-white border border-gray-600'
-          : 'bg-gray-500 text-white';
-      case 'custom':
-        return '';
-      default:
-        return isDark
-          ? 'bg-gray-800 text-white border border-gray-700'
-          : 'bg-white text-gray-900 border border-gray-200';
+    
+    // Use the visualStyle from toast or default
+    const styleClass = toast.visualStyle || defaultStyle;
+    
+    // Create additional style attributes
+    const styleAttributes: Record<string, string> = {};
+    
+    // Customize gradient colors based on variant if using gradient style
+    if (styleClass === 'gradient') {
+      switch (toast.variant) {
+        case 'success':
+          styleAttributes['--toast-gradient-from'] = isDark ? 'rgba(5, 95, 70, 0.9)' : 'rgba(16, 185, 129, 0.8)';
+          styleAttributes['--toast-gradient-to'] = isDark ? 'rgba(4, 120, 87, 0.8)' : 'rgba(5, 150, 105, 0.7)';
+          break;
+        case 'error':
+          styleAttributes['--toast-gradient-from'] = isDark ? 'rgba(153, 27, 27, 0.9)' : 'rgba(239, 68, 68, 0.8)';
+          styleAttributes['--toast-gradient-to'] = isDark ? 'rgba(185, 28, 28, 0.8)' : 'rgba(220, 38, 38, 0.7)';
+          break;
+        case 'warning':
+          styleAttributes['--toast-gradient-from'] = isDark ? 'rgba(146, 64, 14, 0.9)' : 'rgba(245, 158, 11, 0.8)';
+          styleAttributes['--toast-gradient-to'] = isDark ? 'rgba(180, 83, 9, 0.8)' : 'rgba(217, 119, 6, 0.7)';
+          break;
+        case 'info':
+          styleAttributes['--toast-gradient-from'] = isDark ? 'rgba(30, 64, 175, 0.9)' : 'rgba(59, 130, 246, 0.8)';
+          styleAttributes['--toast-gradient-to'] = isDark ? 'rgba(29, 78, 216, 0.8)' : 'rgba(37, 99, 235, 0.7)';
+          break;
+        default:
+          styleAttributes['--toast-gradient-from'] = isDark ? 'rgba(55, 65, 81, 0.9)' : 'rgba(229, 231, 235, 0.8)';
+          styleAttributes['--toast-gradient-to'] = isDark ? 'rgba(75, 85, 99, 0.8)' : 'rgba(209, 213, 219, 0.7)';
+      }
     }
-  }, [toast.variant, toastTheme]);
+
+    // Return the style attributes for use in the component render
+    return styleAttributes;
+  }, [toast.variant, toastTheme, toast.visualStyle, defaultStyle]);
 
   // Memoize animation variants with proper typing
   const animationVariants = useMemo(() => {
@@ -529,8 +537,8 @@ const ToastItem = memo(({
         ref={toastRef}
         role={toast.variant === 'error' ? 'alert' : 'status'}
         aria-live={toast.variant === 'error' ? 'assertive' : 'polite'}
-        className={`relative overflow-hidden shadow-lg rounded-lg ${variantClasses} ${toast.className || ''} ${additionalClasses} react-toast w-full`}
-        style={toast.style}
+        className={`relative overflow-hidden shadow-lg rounded-lg react-toast w-full ${toast.className || ''} ${additionalClasses}`}
+        style={{...(toast.style || {}), ...variantClasses}}
         onMouseEnter={handlePause}
         onMouseLeave={handleResume}
         onClick={handleRippleEffect}
@@ -565,7 +573,7 @@ const ToastItem = memo(({
             />
           </div>
         )}
-
+        
         <div className="p-4 toast-content">
           {toast.variant === 'custom' && toast.component ? (
             toast.component
@@ -678,7 +686,8 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
   rightOffset = 16,
   defaultAnimation = 'slide',
   defaultStyle = 'solid',
-  enableAccessibleAnnouncements = true
+  enableAccessibleAnnouncements = true,
+  suppressHydrationWarning = false
 }) => {
   // Always call hooks at the top level
   const [isMounted, setIsMounted] = useState(false);
@@ -686,7 +695,39 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
   const [screenWidth, setScreenWidth] = useState<number>(1024); // Default for SSR
   const [deviceType, setDeviceType] = useState<'mobile' | 'tablet' | 'desktop'>('desktop'); // Default for SSR
 
-  const { toasts, removeToast, pauseToast, resumeToast, effectiveTheme } = useToastStore();
+  const { toasts, removeToast, pauseToast, resumeToast, effectiveTheme, updateEffectiveTheme } = useToastStore();
+
+  // Set up theme detection and monitoring
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Initial theme detection
+    updateEffectiveTheme();
+    
+    // Setup listeners for system theme changes
+    const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handleThemeChange = () => {
+      updateEffectiveTheme();
+    };
+    
+    // Use the appropriate event listener based on browser support
+    if (darkModeQuery.addEventListener) {
+      darkModeQuery.addEventListener('change', handleThemeChange);
+    } else if (darkModeQuery.addListener) {
+      // For older browsers
+      darkModeQuery.addListener(handleThemeChange);
+    }
+    
+    return () => {
+      // Clean up listeners
+      if (darkModeQuery.removeEventListener) {
+        darkModeQuery.removeEventListener('change', handleThemeChange);
+      } else if (darkModeQuery.removeListener) {
+        darkModeQuery.removeListener(handleThemeChange);
+      }
+    };
+  }, [updateEffectiveTheme]);
 
   // Throttled resize handler for better performance
   const handleResize = useCallback(() => {
@@ -725,6 +766,12 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
       div.style.width = '0';
       div.style.height = '0';
       div.style.zIndex = findHighestZIndex().toString();
+      
+      // Add suppressHydrationWarning attribute if enabled
+      if (suppressHydrationWarning) {
+        div.setAttribute('data-suppress-hydration-warning', 'true');
+      }
+      
       document.body.appendChild(div);
     }
 
@@ -748,7 +795,7 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
         document.body.removeChild(div);
       }
     };
-  }, [handleResize]);
+  }, [handleResize, suppressHydrationWarning]);
 
   // Memoize toasts with valid positions - always call this useMemo
   const toastsWithValidPositions = useMemo(() => {
@@ -854,7 +901,7 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
 
   // Always calculate currentTheme to maintain hook order
   const currentTheme = effectiveTheme || 'light';
-
+  
   // Memoize portal content to prevent unnecessary re-renders - always call this useMemo
   const portalContent = useMemo(() => (
     <>
@@ -895,7 +942,14 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
     return null;
   }
 
-  return createPortal(portalContent, portalElement);
+  // Apply suppressHydrationWarning to the portal content if enabled
+  const portalContentWithSuppression = suppressHydrationWarning ? (
+    <div suppressHydrationWarning={true}>
+      {portalContent}
+    </div>
+  ) : portalContent;
+
+  return createPortal(portalContentWithSuppression, portalElement);
 };
 ToastPortal.displayName = 'ToastPortal';
 

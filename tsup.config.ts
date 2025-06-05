@@ -3,7 +3,8 @@ import fs from 'fs/promises';
 import { join } from 'path';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  // Include devtools-entry as a separate entry point for better code splitting
+  entry: ['src/index.ts', 'src/devtools-entry.ts'],
   format: ['cjs', 'esm'],
   outExtension({ format }) {
     return {
@@ -13,7 +14,7 @@ export default defineConfig({
   dts: {
     resolve: true,
   },
-  splitting: false,
+  splitting: true, // Enable code splitting for better tree-shaking
   sourcemap: true,
   clean: true,
   treeshake: true,
@@ -27,8 +28,11 @@ export default defineConfig({
   },
   
   esbuildOptions(options) {
-    // Đảm bảo fs/path được đánh dấu là external để tránh lỗi bundling
-    options.external = [...(options.external || []), 'fs', 'path'];
+    // Mark React as external to prevent bundling issues
+    options.external = [...(options.external || []), 'react', 'react-dom', 'react/jsx-runtime'];
+    // Ensure JSX runtime is handled properly
+    options.jsx = 'automatic';
+    options.jsxImportSource = 'react';
   },
   
   onSuccess: async () => {

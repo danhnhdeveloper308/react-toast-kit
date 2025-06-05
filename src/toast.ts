@@ -40,6 +40,7 @@ export interface CustomAnimation {
 // Plugin interface for extensibility
 export interface ToastPlugin {
   name: string;
+  description?: string;
   beforeCreate?: (options: ToastOptions) => ToastOptions;
   afterCreate?: (toast: Toast) => void;
   beforeRemove?: (toast: Toast) => boolean;
@@ -150,18 +151,61 @@ const DEFAULT_STYLE: ToastStyle = 'solid';
 // const DEFAULT_PROGRESS_THICKNESS = 3;
 // const DEFAULT_PROGRESS_ANIMATION = 'linear';
 
-// Enhanced system theme detection with error handling
+// Enhanced system theme detection with better error handling and fallback
 const getSystemTheme = (): 'light' | 'dark' => {
-  if (typeof window === 'undefined') return 'light';
-  
+  // Handle SSR
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return 'light'; // Safe default for SSR
+  }
+
   try {
-    // Check for dark mode class on document
-    if (document.documentElement.classList.contains('dark')) return 'dark';
+    // Try the standard media query first
+    const standardQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    if (standardQuery.matches) return 'dark';
+
+    // Try alternative methods for older browsers or special cases
     
-    // Check for prefers-color-scheme media query
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    // iOS/Safari specific detection
+    const iosDarkQuery = window.matchMedia('(-apple-system-interface-style: dark)');
+    if (iosDarkQuery.matches) return 'dark';
+
+    // Check for dark mode classes on html/body (common pattern)
+    const htmlEl = document.documentElement;
+    const bodyEl = document.body;
+    
+    if (
+      htmlEl?.classList.contains('dark') || 
+      bodyEl?.classList.contains('dark') ||
+      htmlEl?.classList.contains('theme-dark') ||
+      bodyEl?.classList.contains('theme-dark') ||
+      htmlEl?.dataset.theme === 'dark' ||
+      bodyEl?.dataset.theme === 'dark'
+    ) {
+      return 'dark';
+    }
+    
+    // Check for CSS variables that might indicate dark mode
+    if (typeof window.getComputedStyle === 'function') {
+      const bodyStyles = window.getComputedStyle(document.body);
+      const htmlStyles = window.getComputedStyle(document.documentElement);
+      
+      const bgColor = bodyStyles.backgroundColor || htmlStyles.backgroundColor || '';
+      
+      // Simple heuristic: if background is dark, probably dark mode
+      if (bgColor) {
+        const rgb = bgColor.match(/\d+/g)?.map(Number);
+        if (rgb && rgb.length >= 3) {
+          // Calculate luminance - if low, likely dark mode
+          const luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
+          if (luminance < 0.5) return 'dark';
+        }
+      }
+    }
+    
+    // Default to light mode if all detection methods fail
+    return 'light';
   } catch (error) {
-    console.warn('React Toast Kit: Failed to detect system theme', error);
+    console.warn('React Toast Kit: Error detecting system theme, falling back to light mode', error);
     return 'light';
   }
 };
@@ -171,17 +215,9 @@ const getConfigValue = <T,>(key: string, defaultValue: T): T => {
   if (typeof window === 'undefined') return defaultValue;
   
   try {
-    // Fix for Window type issues by using proper interface extension
-    interface WindowWithToastConfig extends Window {
-      __TOAST_CONFIG__?: Record<string, unknown>;
-    }
-    
-    const windowWithConfig = window as WindowWithToastConfig;
-    
-    if (windowWithConfig.__TOAST_CONFIG__ && 
-        typeof windowWithConfig.__TOAST_CONFIG__ === 'object' && 
-        key in windowWithConfig.__TOAST_CONFIG__) {
-      return (windowWithConfig.__TOAST_CONFIG__ as Record<string, T>)[key];
+    const config = (window as any).__TOAST_CONFIG__;
+    if (config && typeof config === 'object' && key in config) {
+      return config[key];
     }
   } catch (error) {
     console.warn(`React Toast Kit: Failed to get config value for ${key}`, error);
@@ -191,19 +227,19 @@ const getConfigValue = <T,>(key: string, defaultValue: T): T => {
 };
 
 // Configuration validation
-const validateConfig = (config: Record<string, unknown>): Record<string, unknown> => {
-  if (config.maxToasts && typeof config.maxToasts === 'number' && config.maxToasts < 1) {
-    console.warn('React Toast Kit: maxToasts should be at least 1, setting to 1');
-    config.maxToasts = 1;
-  }
+// const validateConfig = (config: Record<string, unknown>): Record<string, unknown> => {
+//   if (config.maxToasts && typeof config.maxToasts === 'number' && config.maxToasts < 1) {
+//     console.warn('React Toast Kit: maxToasts should be at least 1, setting to 1');
+//     config.maxToasts = 1;
+//   }
   
-  if (config.defaultDuration && typeof config.defaultDuration === 'number' && config.defaultDuration < 0) {
-    console.warn('React Toast Kit: defaultDuration should be positive, setting to 4000ms');
-    config.defaultDuration = 4000;
-  }
+//   if (config.defaultDuration && typeof config.defaultDuration === 'number' && config.defaultDuration < 0) {
+//     console.warn('React Toast Kit: defaultDuration should be positive, setting to 4000ms');
+//     config.defaultDuration = 4000;
+//   }
   
-  return config;
-};
+//   return config;
+// };
 
 export const useToastStore = create<ToastState>((set, get) => ({
   toasts: [],
@@ -220,20 +256,26 @@ export const useToastStore = create<ToastState>((set, get) => ({
       
       // Create a complete Toast object with all required fields 
       // before passing to plugins (this fixes the TypeScript error)
-      const initialToast: Toast = toast;
+      let processedToast: Toast = toast;
       
       // Run beforeCreate plugins
-      let processedToast: Toast = initialToast;
       plugins.forEach(plugin => {
         if (plugin.beforeCreate) {
           // Process the toast and ensure it still has all required properties
           const result = plugin.beforeCreate(processedToast);
+          
+          // Safely merge styles
+          let mergedStyle: React.CSSProperties | undefined;
+          if (result.style || processedToast.style) {
+            mergedStyle = {
+              ...(processedToast.style || {}),
+              ...(result.style || {})
+            };
+          }
+          
+          // Create a new toast object with merged properties
           processedToast = {
-            ...processedToast,
-            ...result,
-            // Ensure required fields from original toast are preserved
             id: result.id || processedToast.id,
-            createdAt: processedToast.createdAt,
             variant: result.variant || processedToast.variant,
             position: result.position || processedToast.position,
             duration: result.duration !== undefined ? result.duration : processedToast.duration,
@@ -241,6 +283,31 @@ export const useToastStore = create<ToastState>((set, get) => ({
             dismissible: result.dismissible !== undefined ? result.dismissible : processedToast.dismissible,
             dismissOnClick: result.dismissOnClick !== undefined ? result.dismissOnClick : processedToast.dismissOnClick,
             theme: result.theme || processedToast.theme,
+            createdAt: processedToast.createdAt,
+            title: result.title || processedToast.title,
+            description: result.description || processedToast.description,
+            icon: result.icon || processedToast.icon,
+            component: result.component || processedToast.component,
+            onDismiss: result.onDismiss || processedToast.onDismiss,
+            className: result.className || processedToast.className,
+            style: mergedStyle,
+            animation: result.animation || processedToast.animation,
+            customAnimation: result.customAnimation || processedToast.customAnimation,
+            visualStyle: result.visualStyle || processedToast.visualStyle,
+            progressBarStyle: result.progressBarStyle || processedToast.progressBarStyle,
+            progressBarColor: result.progressBarColor || processedToast.progressBarColor,
+            progressBarPosition: result.progressBarPosition || processedToast.progressBarPosition,
+            progressBarThickness: result.progressBarThickness || processedToast.progressBarThickness,
+            floating: result.floating !== undefined ? result.floating : processedToast.floating,
+            emoji: result.emoji || processedToast.emoji,
+            rippleEffect: result.rippleEffect !== undefined ? result.rippleEffect : processedToast.rippleEffect,
+            stagger: result.stagger !== undefined ? result.stagger : processedToast.stagger,
+            swipeToDismiss: result.swipeToDismiss !== undefined ? result.swipeToDismiss : processedToast.swipeToDismiss,
+            priority: result.priority || processedToast.priority,
+            progressAnimation: result.progressAnimation || processedToast.progressAnimation,
+            iconString: processedToast.iconString,
+            updating: processedToast.updating,
+            timerId: processedToast.timerId,
           };
         }
       });
@@ -493,18 +560,17 @@ export const useToastStore = create<ToastState>((set, get) => ({
   },
   
   updateEffectiveTheme: () => {
-    try {
-      const { theme } = get();
-      const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;
-      set({ effectiveTheme });
-      
-      // Set data-theme attribute for CSS
-      if (typeof document !== 'undefined') {
-        document.documentElement.setAttribute('data-toast-theme', effectiveTheme);
-      }
-    } catch (error) {
-      console.error('React Toast Kit: Failed to update effective theme', error);
+    const { theme } = get();
+    
+    let newEffectiveTheme: 'light' | 'dark';
+    
+    if (theme === 'system') {
+      newEffectiveTheme = getSystemTheme();
+    } else {
+      newEffectiveTheme = theme as 'light' | 'dark';
     }
+    
+    set({ effectiveTheme: newEffectiveTheme });
   },
   
   cleanup: () => {
@@ -556,41 +622,93 @@ export const useToastStore = create<ToastState>((set, get) => ({
 let mediaQuerySetup = false;
 
 const setupMediaQueryListener = () => {
-  if (mediaQuerySetup || typeof window === 'undefined') return;
+  if (mediaQuerySetup || typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return;
+  }
   
   try {
-    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
-    // Initial update
-    useToastStore.getState().updateEffectiveTheme();
+    // Modern browsers
+    if (typeof darkModeQuery.addEventListener === 'function') {
+      darkModeQuery.addEventListener('change', () => {
+        const { theme } = useToastStore.getState();
+        if (theme === 'system') {
+          useToastStore.getState().updateEffectiveTheme();
+        }
+      });
+    } 
+    // Older browsers
+    else if (typeof darkModeQuery.addListener === 'function') {
+      darkModeQuery.addListener(() => {
+        const { theme } = useToastStore.getState();
+        if (theme === 'system') {
+          useToastStore.getState().updateEffectiveTheme();
+        }
+      });
+    }
     
-    const handleChange = () => {
-      if (useToastStore.getState().theme === 'system') {
-        useToastStore.getState().updateEffectiveTheme();
+    // Handle iOS Safari
+    try {
+      const iosDarkQuery = window.matchMedia('(-apple-system-interface-style: dark)');
+      if (typeof iosDarkQuery.addEventListener === 'function') {
+        iosDarkQuery.addEventListener('change', () => {
+          const { theme } = useToastStore.getState();
+          if (theme === 'system') {
+            useToastStore.getState().updateEffectiveTheme();
+          }
+        });
       }
-    };
+    } catch (e) {
+      // iOS query not supported, ignore
+    }
     
-    if (darkModeMediaQuery.addEventListener) {
-      darkModeMediaQuery.addEventListener('change', handleChange);
-    } else {
-      // Fallback for older browsers
-      darkModeMediaQuery.addListener(handleChange);
+    // Watch for class changes on html/body
+    if (typeof MutationObserver === 'function') {
+      const htmlObserver = new MutationObserver(() => {
+        const { theme } = useToastStore.getState();
+        if (theme === 'system') {
+          useToastStore.getState().updateEffectiveTheme();
+        }
+      });
+      
+      htmlObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'data-theme']
+      });
+      
+      const bodyObserver = new MutationObserver(() => {
+        const { theme } = useToastStore.getState();
+        if (theme === 'system') {
+          useToastStore.getState().updateEffectiveTheme();
+        }
+      });
+      
+      if (document.body) {
+        bodyObserver.observe(document.body, {
+          attributes: true,
+          attributeFilter: ['class', 'data-theme']
+        });
+      }
     }
     
     mediaQuerySetup = true;
   } catch (error) {
-    console.warn('React Toast Kit: Failed to setup media query listener', error);
+    console.warn('React Toast Kit: Error setting up theme change listeners', error);
   }
 };
 
 // Only setup when needed, not at module level
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-  // Use a safe way to initialize without interfering with React
+  // Wait for DOM to be ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupMediaQueryListener);
   } else {
     setupMediaQueryListener();
   }
+  
+  // Initialize effective theme
+  useToastStore.getState().updateEffectiveTheme();
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -636,53 +754,107 @@ const iconStrings = {
 // Enhanced toast creation with better error handling
 const createToast = (options: ToastOptions | string): string => {
   try {
-    const configuredDefaults = validateConfig({
-      duration: getConfigValue('defaultDuration', DEFAULT_DURATION),
-      position: getConfigValue('defaultPosition', DEFAULT_POSITION),
-      theme: getConfigValue('defaultTheme', useToastStore.getState().theme),
-      animation: getConfigValue('defaultAnimation', DEFAULT_ANIMATION),
-      style: getConfigValue('defaultStyle', DEFAULT_STYLE),
-    });
+    let toastOptions: ToastOptions;
     
-    const defaultOptions: ToastOptions = {
-      variant: 'default',
-      duration: configuredDefaults.duration as number,
-      position: configuredDefaults.position as ToastPosition,
-      dismissible: true,
-      pauseOnHover: true,
-      dismissOnClick: false,
-      theme: configuredDefaults.theme as ToastTheme,
-      animation: configuredDefaults.animation as ToastAnimation,
-      visualStyle: configuredDefaults.style as ToastStyle,
-      priority: 'normal',
-      swipeToDismiss: true,
-    };
+    if (typeof options === 'string') {
+      toastOptions = { 
+        description: options,
+        // Apply defaults from provider
+        duration: getConfigValue('defaultDuration', DEFAULT_DURATION),
+        dismissible: getConfigValue('defaultDismissible', true),
+        pauseOnHover: getConfigValue('defaultPauseOnHover', true),
+        dismissOnClick: getConfigValue('defaultDismissOnClick', false),
+        animation: getConfigValue('defaultAnimation', DEFAULT_ANIMATION),
+        visualStyle: getConfigValue('defaultStyle', DEFAULT_STYLE),
+        progressBarStyle: getConfigValue('defaultProgressBarStyle', undefined),
+        progressBarColor: getConfigValue('defaultProgressBarColor', undefined),
+        progressBarPosition: getConfigValue('defaultProgressBarPosition', 'bottom'),
+        progressBarThickness: getConfigValue('defaultProgressBarThickness', 3),
+        progressAnimation: getConfigValue('defaultProgressAnimation', 'linear'),
+        floating: getConfigValue('defaultFloating', false),
+        rippleEffect: getConfigValue('defaultRippleEffect', false),
+        swipeToDismiss: getConfigValue('defaultSwipeToDismiss', false),
+        priority: getConfigValue('defaultPriority', 'normal'),
+        stagger: getConfigValue('defaultStagger', 0),
+      };
+    } else {
+      toastOptions = {
+        // Apply defaults first, then override with provided options
+        duration: getConfigValue('defaultDuration', DEFAULT_DURATION),
+        dismissible: getConfigValue('defaultDismissible', true),
+        pauseOnHover: getConfigValue('defaultPauseOnHover', true),
+        dismissOnClick: getConfigValue('defaultDismissOnClick', false),
+        animation: getConfigValue('defaultAnimation', DEFAULT_ANIMATION),
+        visualStyle: getConfigValue('defaultStyle', DEFAULT_STYLE),
+        progressBarStyle: getConfigValue('defaultProgressBarStyle', undefined),
+        progressBarColor: getConfigValue('defaultProgressBarColor', undefined),
+        progressBarPosition: getConfigValue('defaultProgressBarPosition', 'bottom'),
+        progressBarThickness: getConfigValue('defaultProgressBarThickness', 3),
+        progressAnimation: getConfigValue('defaultProgressAnimation', 'linear'),
+        floating: getConfigValue('defaultFloating', false),
+        rippleEffect: getConfigValue('defaultRippleEffect', false),
+        swipeToDismiss: getConfigValue('defaultSwipeToDismiss', false),
+        priority: getConfigValue('defaultPriority', 'normal'),
+        stagger: getConfigValue('defaultStagger', 0),
+        ...options, // User options override defaults
+      };
+    }
+
+    // Apply global styles if configured
+    const globalClassName = getConfigValue('globalClassName', undefined);
+    const globalStyle = getConfigValue('globalStyle', undefined);
     
-    // Handle string case
-    const toastOptions: ToastOptions = typeof options === 'string' 
-      ? { description: options } 
-      : { ...options };
-      
-    // Add iconString property for later conversion
-    const variant = toastOptions.variant || defaultOptions.variant;
-    if (!toastOptions.icon && !toastOptions.emoji && variant !== 'custom') {
-      if (variant && variant in iconStrings) {
-        (toastOptions as Record<string, unknown>).iconString = iconStrings[variant as keyof typeof iconStrings];
-      }
+    if (globalClassName) {
+      toastOptions.className = toastOptions.className 
+        ? `${globalClassName} ${toastOptions.className}`
+        : globalClassName;
     }
     
-    // For loading variant, set infinite duration by default
-    if (variant === 'loading' && toastOptions.duration === undefined) {
-      toastOptions.duration = 0;
+    if (globalStyle && typeof globalStyle === 'object') {
+      toastOptions.style = {
+        ...(globalStyle as React.CSSProperties),
+        ...(toastOptions.style || {}),
+      };
     }
-    
+
     const toast: Toast = {
-      ...defaultOptions,
-      ...toastOptions,
       id: toastOptions.id || generateId(),
+      variant: toastOptions.variant || 'default',
+      position: toastOptions.position || DEFAULT_POSITION,
+      duration: toastOptions.duration !== undefined ? toastOptions.duration : DEFAULT_DURATION,
+      pauseOnHover: toastOptions.pauseOnHover !== undefined ? toastOptions.pauseOnHover : true,
+      dismissible: toastOptions.dismissible !== undefined ? toastOptions.dismissible : true,
+      dismissOnClick: toastOptions.dismissOnClick !== undefined ? toastOptions.dismissOnClick : false,
+      theme: toastOptions.theme || DEFAULT_THEME,
+      title: toastOptions.title,
+      description: toastOptions.description,
+      icon: toastOptions.icon,
+      component: toastOptions.component,
       createdAt: Date.now(),
-    } as Toast;
-    
+      onDismiss: toastOptions.onDismiss,
+      className: toastOptions.className,
+      style: toastOptions.style,
+      animation: toastOptions.animation,
+      customAnimation: toastOptions.customAnimation,
+      visualStyle: toastOptions.visualStyle,
+      progressBarStyle: toastOptions.progressBarStyle,
+      progressBarColor: toastOptions.progressBarColor,
+      progressBarPosition: toastOptions.progressBarPosition,
+      progressBarThickness: toastOptions.progressBarThickness,
+      floating: toastOptions.floating,
+      emoji: toastOptions.emoji,
+      rippleEffect: toastOptions.rippleEffect,
+      stagger: toastOptions.stagger,
+      swipeToDismiss: toastOptions.swipeToDismiss,
+      priority: toastOptions.priority,
+      progressAnimation: toastOptions.progressAnimation,
+    };
+
+    // Add icon string if variant has one and no custom icon provided
+    if (!toast.icon && !toast.emoji && toast.variant && toast.variant in iconStrings) {
+      toast.iconString = iconStrings[toast.variant as keyof typeof iconStrings];
+    }
+
     return useToastStore.getState().addToast(toast);
   } catch (error) {
     console.error('React Toast Kit: Failed to create toast', error);
@@ -826,7 +998,7 @@ type DevTools = {
 };
 
 // Development tools (only available in development)
-export const toastDevTools = typeof process !== 'undefined' && process.env.NODE_ENV === 'development' ? {
+const devTools = typeof process !== 'undefined' && process.env.NODE_ENV === 'development' ? {
   getActiveToasts: () => useToastStore.getState().toasts,
   clearAll: () => useToastStore.getState().clearAllToasts(),
   debugInfo: () => {
@@ -867,4 +1039,47 @@ export const unregisterPlugin = (name: string) => {
 // Cleanup function for applications
 export const cleanup = () => {
   useToastStore.getState().cleanup();
+};
+
+// DevTools specific API - only imported when using the devtools entry point
+export const toastDevTools = {
+  /**
+   * Show the DevTools panel
+   */
+  show: () => {
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('react-toast-kit:devtools:show');
+      window.dispatchEvent(event);
+    }
+  },
+
+  /**
+   * Hide the DevTools panel
+   */
+  hide: () => {
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('react-toast-kit:devtools:hide');
+      window.dispatchEvent(event);
+    }
+  },
+
+  /**
+   * Toggle the DevTools panel visibility
+   */
+  toggle: () => {
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('react-toast-kit:devtools:toggle');
+      window.dispatchEvent(event);
+    }
+  },
+
+  /**
+   * Get all active toasts
+   */
+  getToasts: () => useToastStore.getState().toasts,
+
+  // Include the development tools but only in development
+  ...devTools
+  
+  // Note: We removed the duplicate clearAll property since it's already in the devTools object
 };

@@ -1,6 +1,8 @@
-import { useCallback, useMemo } from 'react';
+import * as React from 'react';
 import { useToastStore } from './toast';
 import type { ToastTheme, ToastPosition } from './toast';
+
+const { useCallback, useMemo } = React;
 
 /**
  * Hook to access toast functionality

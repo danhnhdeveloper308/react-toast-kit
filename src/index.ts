@@ -99,8 +99,7 @@ export { useToastStore } from './toast';
 export { 
   registerPlugin, 
   unregisterPlugin, 
-  cleanup,
-  toastDevTools 
+  cleanup
 } from './toast';
 
 // Type exports with better organization
@@ -113,7 +112,7 @@ export type {
   ToastTheme,
   ToastAnimation,
   ToastStyle,
-  ProgressBarStyle,  // Add the missing ProgressBarStyle export
+  ProgressBarStyle,
   
   // Enhanced types
   CustomAnimation,

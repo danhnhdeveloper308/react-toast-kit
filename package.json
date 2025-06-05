@@ -1,6 +1,6 @@
 {
   "name": "react-toast-kit",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "description": "A modern, accessible toast notification system for React applications with automatic CSS injection",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -33,6 +33,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/client.mjs",
       "require": "./dist/client.cjs"
+    },
+    "./devtools": {
+      "types": "./dist/devtools-entry.d.ts",
+      "import": "./dist/devtools-entry.mjs",
+      "require": "./dist/devtools-entry.cjs"
     },
     "./nextjs/client": {
       "types": "./dist/nextjs/client.d.ts",
