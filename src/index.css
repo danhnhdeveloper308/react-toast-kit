@@ -1,0 +1,778 @@
+/* ─── React Toast Kit — index.css ─────────────────────────────────────────── */
+
+/* Container */
+.react-toast-container {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.react-toast-container[data-position="top-right"]    { top: 1rem; right: 1rem; align-items: flex-end; }
+.react-toast-container[data-position="top-center"]   { top: 1rem; left: 50%; transform: translateX(-50%); align-items: center; }
+.react-toast-container[data-position="top-left"]     { top: 1rem; left: 1rem; align-items: flex-start; }
+.react-toast-container[data-position="bottom-right"] { bottom: 1rem; right: 1rem; align-items: flex-end; }
+.react-toast-container[data-position="bottom-center"]{ bottom: 1rem; left: 50%; transform: translateX(-50%); align-items: center; }
+.react-toast-container[data-position="bottom-left"]  { bottom: 1rem; left: 1rem; align-items: flex-start; }
+
+/* Item */
+.react-toast-item {
+  width: 100%;
+  pointer-events: auto;
+  max-width: 380px;
+}
+
+@media (max-width: 640px) {
+  .react-toast-item { max-width: 92vw; }
+}
+
+/* ─── Base toast ─────────────────────────────────────────────────────────── */
+.react-toast {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.625rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.9375rem;
+  word-break: break-word;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  /* GPU layer promotion */
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.react-toast:hover {
+  transform: translateZ(0) scale(1.015);
+}
+
+/* ─── Solid variant colours (light) ─────────────────────────────────────── */
+.react-toast[data-variant="success"] {
+  background-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.45), 0 4px 8px -2px rgba(16, 185, 129, 0.2);
+}
+
+.react-toast[data-variant="error"] {
+  background-color: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 8px 24px -4px rgba(239, 68, 68, 0.45), 0 4px 8px -2px rgba(239, 68, 68, 0.2);
+}
+
+.react-toast[data-variant="warning"] {
+  background-color: #f59e0b;
+  color: #ffffff;
+  box-shadow: 0 8px 24px -4px rgba(245, 158, 11, 0.45), 0 4px 8px -2px rgba(245, 158, 11, 0.2);
+}
+
+.react-toast[data-variant="info"] {
+  background-color: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 8px 24px -4px rgba(59, 130, 246, 0.45), 0 4px 8px -2px rgba(59, 130, 246, 0.2);
+}
+
+.react-toast[data-variant="loading"] {
+  background-color: #6b7280;
+  color: #ffffff;
+  box-shadow: 0 8px 24px -4px rgba(107, 114, 128, 0.35), 0 4px 8px -2px rgba(107, 114, 128, 0.15);
+}
+
+.react-toast[data-variant="default"] {
+  background-color: #ffffff;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.1), 0 4px 8px -2px rgba(0, 0, 0, 0.06);
+}
+
+/* Dark mode — solid */
+.react-toast[data-theme="dark"][data-variant="success"] {
+  background-color: #065f46;
+  color: #ffffff;
+  border: 1px solid #047857;
+  box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.3), 0 4px 8px -2px rgba(16, 185, 129, 0.12);
+}
+
+.react-toast[data-theme="dark"][data-variant="error"] {
+  background-color: #991b1b;
+  color: #ffffff;
+  border: 1px solid #b91c1c;
+  box-shadow: 0 8px 24px -4px rgba(239, 68, 68, 0.3), 0 4px 8px -2px rgba(239, 68, 68, 0.12);
+}
+
+.react-toast[data-theme="dark"][data-variant="warning"] {
+  background-color: #92400e;
+  color: #ffffff;
+  border: 1px solid #b45309;
+  box-shadow: 0 8px 24px -4px rgba(245, 158, 11, 0.3), 0 4px 8px -2px rgba(245, 158, 11, 0.12);
+}
+
+.react-toast[data-theme="dark"][data-variant="info"] {
+  background-color: #1e40af;
+  color: #ffffff;
+  border: 1px solid #1d4ed8;
+  box-shadow: 0 8px 24px -4px rgba(59, 130, 246, 0.3), 0 4px 8px -2px rgba(59, 130, 246, 0.12);
+}
+
+.react-toast[data-theme="dark"][data-variant="loading"] {
+  background-color: #374151;
+  color: #ffffff;
+  border: 1px solid #4b5563;
+}
+
+.react-toast[data-theme="dark"][data-variant="default"] {
+  background-color: #1f2937;
+  color: #f9fafb;
+  border: 1px solid #374151;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4), 0 4px 8px -2px rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Gradient style ─────────────────────────────────────────────────────── */
+.react-toast[data-style="gradient"] {
+  background-image: linear-gradient(
+    135deg,
+    var(--toast-gradient-from, rgba(59, 130, 246, 0.85)),
+    var(--toast-gradient-to, rgba(37, 99, 235, 0.9))
+  );
+  border: none;
+}
+
+/* ─── Glass style ────────────────────────────────────────────────────────── */
+.react-toast[data-style="glass"] {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: #1f2937;
+}
+
+.react-toast[data-theme="dark"][data-style="glass"] {
+  background: rgba(17, 24, 39, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #f9fafb;
+}
+
+/* ─── Shimmer style ──────────────────────────────────────────────────────── */
+.react-toast[data-style="shimmer"] {
+  position: relative;
+  overflow: hidden;
+}
+
+.react-toast[data-style="shimmer"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.28) 50%, transparent 60%);
+  background-size: 200% 100%;
+  animation: shimmer 2.2s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Pill style ─────────────────────────────────────────────────────────── */
+.react-toast[data-style="pill"] {
+  border-radius: 9999px;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+/* ─── Neon style ─────────────────────────────────────────────────────────── */
+.react-toast[data-style="neon"][data-variant="success"] {
+  background-color: #022c22;
+  color: #34d399;
+  border: 1px solid #10b981;
+  animation: neon-pulse-green 2s ease-in-out infinite;
+}
+
+.react-toast[data-style="neon"][data-variant="error"] {
+  background-color: #2d0a0a;
+  color: #f87171;
+  border: 1px solid #ef4444;
+  animation: neon-pulse-red 2s ease-in-out infinite;
+}
+
+.react-toast[data-style="neon"][data-variant="warning"] {
+  background-color: #2d1a00;
+  color: #fbbf24;
+  border: 1px solid #f59e0b;
+  animation: neon-pulse-amber 2s ease-in-out infinite;
+}
+
+.react-toast[data-style="neon"][data-variant="info"] {
+  background-color: #0a1628;
+  color: #60a5fa;
+  border: 1px solid #3b82f6;
+  animation: neon-pulse-blue 2s ease-in-out infinite;
+}
+
+.react-toast[data-style="neon"][data-variant="loading"],
+.react-toast[data-style="neon"][data-variant="default"] {
+  background-color: #0f1117;
+  color: #a78bfa;
+  border: 1px solid #7c3aed;
+  animation: neon-pulse-violet 2s ease-in-out infinite;
+}
+
+@keyframes neon-pulse-green {
+  0%, 100% { box-shadow: 0 0 6px rgba(16, 185, 129, 0.5), 0 0 18px rgba(16, 185, 129, 0.25); }
+  50%       { box-shadow: 0 0 14px rgba(16, 185, 129, 0.8), 0 0 36px rgba(16, 185, 129, 0.4); }
+}
+
+@keyframes neon-pulse-red {
+  0%, 100% { box-shadow: 0 0 6px rgba(239, 68, 68, 0.5), 0 0 18px rgba(239, 68, 68, 0.25); }
+  50%       { box-shadow: 0 0 14px rgba(239, 68, 68, 0.8), 0 0 36px rgba(239, 68, 68, 0.4); }
+}
+
+@keyframes neon-pulse-amber {
+  0%, 100% { box-shadow: 0 0 6px rgba(245, 158, 11, 0.5), 0 0 18px rgba(245, 158, 11, 0.25); }
+  50%       { box-shadow: 0 0 14px rgba(245, 158, 11, 0.8), 0 0 36px rgba(245, 158, 11, 0.4); }
+}
+
+@keyframes neon-pulse-blue {
+  0%, 100% { box-shadow: 0 0 6px rgba(59, 130, 246, 0.5), 0 0 18px rgba(59, 130, 246, 0.25); }
+  50%       { box-shadow: 0 0 14px rgba(59, 130, 246, 0.8), 0 0 36px rgba(59, 130, 246, 0.4); }
+}
+
+@keyframes neon-pulse-violet {
+  0%, 100% { box-shadow: 0 0 6px rgba(124, 58, 237, 0.5), 0 0 18px rgba(124, 58, 237, 0.25); }
+  50%       { box-shadow: 0 0 14px rgba(124, 58, 237, 0.8), 0 0 36px rgba(124, 58, 237, 0.4); }
+}
+
+/* ─── Retro style ────────────────────────────────────────────────────────── */
+.react-toast[data-style="retro"] {
+  border: 2px solid #000;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.9);
+  border-radius: 4px;
+  font-family: "Courier New", Courier, monospace;
+}
+
+.react-toast[data-theme="dark"][data-style="retro"] {
+  border: 2px solid #fff;
+  box-shadow: 4px 4px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* ─── Confetti style ─────────────────────────────────────────────────────── */
+.react-toast[data-style="confetti"] {
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='rgba(255,255,255,.1)' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+/* ─── Minimal style ──────────────────────────────────────────────────────── */
+.react-toast[data-style="minimal"] {
+  background-color: #ffffff;
+  color: #1f2937;
+  border: 1px solid #f3f4f6;
+  border-left: 4px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.react-toast[data-theme="dark"][data-style="minimal"] {
+  background-color: #111827;
+  color: #f9fafb;
+  border: 1px solid #1f2937;
+  border-left: 4px solid #374151;
+}
+
+.react-toast[data-style="minimal"][data-variant="success"] { border-left-color: #10b981; }
+.react-toast[data-style="minimal"][data-variant="error"]   { border-left-color: #ef4444; }
+.react-toast[data-style="minimal"][data-variant="warning"] { border-left-color: #f59e0b; }
+.react-toast[data-style="minimal"][data-variant="info"]    { border-left-color: #3b82f6; }
+.react-toast[data-style="minimal"][data-variant="loading"] { border-left-color: #6b7280; }
+
+.react-toast[data-style="minimal"] .toast-icon-container {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.react-toast[data-style="minimal"][data-variant="success"] .toast-icon-container {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.react-toast[data-style="minimal"][data-variant="error"] .toast-icon-container {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.react-toast[data-style="minimal"][data-variant="warning"] .toast-icon-container {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.react-toast[data-style="minimal"][data-variant="info"] .toast-icon-container {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.react-toast[data-style="minimal"][data-variant="loading"] .toast-icon-container {
+  background: rgba(107, 114, 128, 0.12);
+  color: #4b5563;
+}
+
+/* ─── Outlined style ─────────────────────────────────────────────────────── */
+.react-toast[data-style="outlined"] {
+  background-color: transparent;
+  border: 2px solid currentColor;
+  box-shadow: none;
+}
+
+.react-toast[data-style="outlined"][data-variant="success"] {
+  color: #059669;
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.react-toast[data-style="outlined"][data-variant="error"] {
+  color: #dc2626;
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.react-toast[data-style="outlined"][data-variant="warning"] {
+  color: #d97706;
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.04);
+}
+
+.react-toast[data-style="outlined"][data-variant="info"] {
+  color: #2563eb;
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.react-toast[data-style="outlined"][data-variant="loading"],
+.react-toast[data-style="outlined"][data-variant="default"] {
+  color: #4b5563;
+  border-color: #9ca3af;
+  background: rgba(107, 114, 128, 0.04);
+}
+
+.react-toast[data-theme="dark"][data-style="outlined"][data-variant="success"] {
+  color: #34d399;
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.react-toast[data-theme="dark"][data-style="outlined"][data-variant="error"] {
+  color: #f87171;
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.react-toast[data-theme="dark"][data-style="outlined"][data-variant="warning"] {
+  color: #fbbf24;
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.react-toast[data-theme="dark"][data-style="outlined"][data-variant="info"] {
+  color: #60a5fa;
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.react-toast[data-theme="dark"][data-style="outlined"][data-variant="loading"],
+.react-toast[data-theme="dark"][data-style="outlined"][data-variant="default"] {
+  color: #9ca3af;
+  border-color: #4b5563;
+  background: rgba(107, 114, 128, 0.08);
+}
+
+/* ─── Toast content ──────────────────────────────────────────────────────── */
+.toast-content {
+  display: flex;
+  flex-direction: column;
+  padding: 0.875rem 1rem;
+}
+
+.react-toast h4 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.toast-description {
+  margin-top: 0.2rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+/* ─── Icon container ─────────────────────────────────────────────────────── */
+.toast-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 0.75rem;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.toast-icon-animated {
+  animation: toast-icon-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes toast-icon-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  70%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Loading spinner via pseudo-element */
+.react-toast[data-variant="loading"] .toast-icon-container {
+  position: relative;
+}
+
+.react-toast[data-variant="loading"] .toast-icon-container svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Emoji */
+.toast-emoji {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 1.25rem;
+  margin-right: 0.625rem;
+  line-height: 1;
+}
+
+/* ─── Action buttons ─────────────────────────────────────────────────────── */
+.toast-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.625rem;
+}
+
+.toast-action-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+}
+
+.toast-action-btn:hover {
+  background: rgba(255, 255, 255, 0.32);
+  transform: translateY(-1px);
+}
+
+.toast-action-btn:active { transform: translateY(0); }
+
+.toast-action-btn[data-variant="secondary"] {
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+}
+
+.toast-action-btn[data-variant="secondary"]:hover {
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.toast-action-btn[data-variant="danger"] {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.toast-action-btn[data-variant="danger"]:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+/* Dark-safe action buttons on minimal/outlined */
+.react-toast[data-style="minimal"] .toast-action-btn,
+.react-toast[data-style="outlined"] .toast-action-btn {
+  background: rgba(0, 0, 0, 0.06);
+  color: inherit;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.react-toast[data-style="minimal"] .toast-action-btn:hover,
+.react-toast[data-style="outlined"] .toast-action-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.react-toast[data-theme="dark"][data-style="minimal"] .toast-action-btn,
+.react-toast[data-theme="dark"][data-style="outlined"] .toast-action-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.react-toast[data-theme="dark"][data-style="minimal"] .toast-action-btn:hover,
+.react-toast[data-theme="dark"][data-style="outlined"] .toast-action-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ─── Close button ───────────────────────────────────────────────────────── */
+.react-toast-close {
+  position: absolute;
+  top: 0.625rem;
+  right: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.0);
+  color: currentColor;
+  opacity: 0.45;
+  cursor: pointer;
+  transition: opacity 0.18s ease, background 0.18s ease, transform 0.12s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.react-toast-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.react-toast[data-style="minimal"] .react-toast-close:hover,
+.react-toast[data-style="outlined"] .react-toast-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.react-toast[data-theme="dark"][data-style="minimal"] .react-toast-close:hover,
+.react-toast[data-theme="dark"][data-style="outlined"] .react-toast-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Progress bar ───────────────────────────────────────────────────────── */
+.react-toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  overflow: hidden;
+}
+
+.react-toast[data-progress-position="top"] .react-toast-progress {
+  top: 0;
+  bottom: auto;
+}
+
+.react-toast[data-progress-position="left"] .react-toast-progress {
+  top: 0;
+  bottom: 0;
+  right: auto;
+  width: 3px;
+  height: 100%;
+}
+
+.react-toast[data-progress-position="right"] .react-toast-progress {
+  top: 0;
+  bottom: 0;
+  left: auto;
+  width: 3px;
+  height: 100%;
+}
+
+.react-toast-progress-fill {
+  height: 100%;
+  width: 100%;
+  will-change: transform;
+  transform-origin: left center;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Variant-matched progress fill for minimal & outlined */
+.react-toast[data-style="minimal"][data-variant="success"] .react-toast-progress-fill,
+.react-toast[data-style="outlined"][data-variant="success"] .react-toast-progress-fill {
+  background: #10b981;
+}
+
+.react-toast[data-style="minimal"][data-variant="error"] .react-toast-progress-fill,
+.react-toast[data-style="outlined"][data-variant="error"] .react-toast-progress-fill {
+  background: #ef4444;
+}
+
+.react-toast[data-style="minimal"][data-variant="warning"] .react-toast-progress-fill,
+.react-toast[data-style="outlined"][data-variant="warning"] .react-toast-progress-fill {
+  background: #f59e0b;
+}
+
+.react-toast[data-style="minimal"][data-variant="info"] .react-toast-progress-fill,
+.react-toast[data-style="outlined"][data-variant="info"] .react-toast-progress-fill {
+  background: #3b82f6;
+}
+
+.react-toast[data-style="minimal"][data-variant="default"] .react-toast-progress-fill,
+.react-toast[data-style="outlined"][data-variant="default"] .react-toast-progress-fill {
+  background: #9ca3af;
+}
+
+/* Vertical progress — override transform-origin */
+.react-toast[data-progress-position="left"] .react-toast-progress-fill,
+.react-toast[data-progress-position="right"] .react-toast-progress-fill {
+  transform-origin: top center;
+}
+
+/* Enhanced progress styles */
+.react-toast-progress.fancy {
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.18));
+  backdrop-filter: blur(4px);
+}
+
+.react-toast-progress.gradient-wave .react-toast-progress-fill {
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #3b82f6);
+  background-size: 300% 100%;
+  animation: gradient-wave 2s linear infinite;
+}
+
+@keyframes gradient-wave {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+.react-toast-progress.pulse .react-toast-progress-fill {
+  animation: progress-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes progress-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+.react-toast-progress.three-d .react-toast-progress-fill {
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.react-toast-progress.glow .react-toast-progress-fill {
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+}
+
+.react-toast-progress.rainbow .react-toast-progress-fill {
+  background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+  background-size: 700% 100%;
+  animation: rainbow 4s linear infinite;
+}
+
+@keyframes rainbow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.react-toast-progress.dashed .react-toast-progress-fill {
+  background-image: linear-gradient(to right, currentColor 50%, transparent 50%);
+  background-size: 20px 100%;
+}
+
+/* ─── Ripple ─────────────────────────────────────────────────────────────── */
+.toast-ripple { position: relative; overflow: hidden; }
+
+.toast-ripple-element {
+  position: absolute;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.3);
+  width: 100px;
+  height: 100px;
+  margin-top: -50px;
+  margin-left: -50px;
+  animation: ripple 0.7s linear;
+  transform: scale(0);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  to { transform: scale(4); opacity: 0; }
+}
+
+/* ─── Floating ───────────────────────────────────────────────────────────── */
+.react-toast-floating {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateZ(0) translateY(0); }
+  50%       { transform: translateZ(0) translateY(-5px); }
+}
+
+/* ─── Soft shadow helper ─────────────────────────────────────────────────── */
+.toast-soft-shadow {
+  box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.18), 0 4px 12px -4px rgba(0, 0, 0, 0.1);
+}
+
+/* ─── Accessibility ──────────────────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .react-toast,
+  .react-toast::after,
+  .react-toast-floating,
+  .toast-icon-animated,
+  .react-toast[data-style="neon"] {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .react-toast:hover {
+    transform: translateZ(0) !important;
+  }
+
+  .react-toast-progress-fill {
+    transition: none !important;
+  }
+}
+
+/* ─── Mobile ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .react-toast-container {
+    width: calc(100% - 2rem);
+    max-width: 100%;
+  }
+
+  .react-toast-item {
+    width: 100%;
+  }
+
+  .react-toast {
+    font-size: 0.875rem;
+  }
+
+  .react-toast-close {
+    width: 2rem;
+    height: 2rem;
+  }
+}
