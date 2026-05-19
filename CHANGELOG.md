@@ -1,3 +1,10 @@
+## [1.0.8](https://github.com/danhnhdeveloper308/react-toast-kit/compare/v1.0.7...v1.0.8) (2026-05-19)
+
+
+### Bug Fixes
+
+* align pnpm version to v10 in CI and Release workflows ([3030ead](https://github.com/danhnhdeveloper308/react-toast-kit/commit/3030eaddf4f33cd302246f889ceea0b518c9046e))
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
