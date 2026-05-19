@@ -2,22 +2,36 @@
   "name": "react-toast-kit",
   "version": "1.0.7",
   "description": "A modern, accessible toast notification system for React applications with automatic CSS injection",
+  "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "type": "module",
-  "sideEffects": ["*.css", "./dist/styles.css"],
-  "style": "dist/styles.css",
+  "style": "./dist/styles.css",
+  "sideEffects": [
+    "./dist/index.mjs",
+    "./dist/index.cjs",
+    "**/*.css"
+  ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./devtools": {
-      "types": "./dist/devtools-entry.d.ts",
-      "import": "./dist/devtools-entry.mjs",
-      "require": "./dist/devtools-entry.cjs"
+      "import": {
+        "types": "./dist/devtools-entry.d.ts",
+        "default": "./dist/devtools-entry.mjs"
+      },
+      "require": {
+        "types": "./dist/devtools-entry.d.cts",
+        "default": "./dist/devtools-entry.cjs"
+      }
     },
     "./styles.css": "./dist/styles.css"
   },
@@ -27,13 +41,18 @@
     "README.md",
     "LICENSE"
   ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "scripts": {
     "build": "tsup",
     "build:clean": "rm -rf dist && pnpm build",
     "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "test": "vitest",
-    "prepublishOnly": "[ -d dist ] || pnpm build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run build:clean",
     "semantic-release": "semantic-release"
   },
   "keywords": [
@@ -46,10 +65,8 @@
     "react-component",
     "react-toast",
     "typescript",
-    "zero-dependency",
     "auto-css",
     "css-injection",
-    "pure-css",
     "accessible",
     "modern"
   ],
@@ -63,16 +80,20 @@
   "bugs": {
     "url": "https://github.com/danhnhdeveloper308/react-toast-kit/issues"
   },
-  "dependencies": {
-    "framer-motion": "^12.11.3",
-    "zustand": "^5.0.4"
+  "peerDependencies": {
+    "framer-motion": "^10.16.0 || ^11.0.0 || ^12.0.0",
+    "react": "^17.0.0 || ^18.0.0",
+    "react-dom": "^17.0.0 || ^18.0.0"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^10.0.0",
+    "@semantic-release/npm": "^12.0.0",
     "@size-limit/preset-small-lib": "^10.0.1",
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^14.5.1",
-    "@types/jest": "^29.5.5",
     "@types/node": "^20.10.0",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
@@ -82,31 +103,17 @@
     "eslint": "^8.56.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
+    "framer-motion": "^12.11.3",
+    "happy-dom": "^12.10.3",
     "postcss": "^8.4.31",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "rimraf": "^5.0.5",
+    "semantic-release": "^24.2.0",
     "size-limit": "^10.0.1",
-    "tailwindcss": "^3.3.5",
-    "ts-jest": "^29.1.1",
     "tsup": "^8.0.2",
     "typescript": "^5.8.3",
-    "happy-dom": "^12.10.3",
     "vitest": "^1.1.0",
-    "semantic-release": "^24.2.0",
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/git": "^10.0.1"
-  },
-  "peerDependencies": {
-    "framer-motion": "^10.16.0 || ^11.0.0 || ^12.0.0",
-    "react": "^17.0.0 || ^18.0.0",
-    "react-dom": "^17.0.0 || ^18.0.0"
-  },
-  "peerDependenciesMeta": {
-    "framer-motion": {
-      "optional": false
-    }
+    "zustand": "^5.0.4"
   }
 }
