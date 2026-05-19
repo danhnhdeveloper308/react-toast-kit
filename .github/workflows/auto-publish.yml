@@ -1,26 +1,16 @@
 name: Release
 
-# Triggered only when the CI workflow completes successfully on main.
-# This eliminates the duplicate-run problem: CI and Release no longer both
-# fire independently on every push — Release waits for CI to pass first.
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  push:
     branches: [main]
-  # Manual trigger for hotfix / emergency releases without a full commit cycle.
+    paths-ignore:
+      - 'CHANGELOG.md'
+      - 'docs/**'
   workflow_dispatch:
 
 jobs:
   release:
     name: Semantic Release
-    # For workflow_run events, only proceed when CI passed.
-    # workflow_dispatch has no .workflow_run context, so the condition
-    # falls back to true and lets the manual trigger through unconditionally.
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
-
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -33,9 +23,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Pin to the exact SHA that triggered CI to avoid race conditions on
-          # rapid back-to-back pushes. Falls back to github.sha for manual runs.
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           # GH_TOKEN must be a Personal Access Token (classic) with `repo` scope.
           # GITHUB_TOKEN cannot push tags/commits back in most GitHub configurations.
           # Create one at: https://github.com/settings/tokens?type=legacy
@@ -53,7 +40,6 @@ jobs:
           cache: pnpm
           # registry-url causes setup-node to write a project-level .npmrc:
           #   //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
-          # Without this line, NODE_AUTH_TOKEN is never wired into npm.
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
