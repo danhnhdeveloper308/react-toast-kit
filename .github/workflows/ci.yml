@@ -39,7 +39,7 @@ jobs:
         run: pnpm lint || echo "⚠️  Lint warnings (non-blocking)"
 
       - name: Type check
-        run: pnpm exec tsc --noEmit
+        run: pnpm typecheck
 
       - name: Build
         run: pnpm build

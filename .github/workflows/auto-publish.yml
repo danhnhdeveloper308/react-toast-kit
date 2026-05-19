@@ -28,7 +28,6 @@ jobs:
           # GH_TOKEN must be a Personal Access Token (classic) with `repo` scope.
           # GITHUB_TOKEN cannot push tags/commits back in most GitHub configurations.
           # Create one at: https://github.com/settings/tokens?type=legacy
-          # Then add it as a repository secret named GH_TOKEN.
           token: ${{ secrets.GH_TOKEN }}
 
       - name: Setup pnpm
@@ -41,6 +40,11 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+          # registry-url causes setup-node to write a project-level .npmrc:
+          #   //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+          # Without this line, NODE_AUTH_TOKEN is never wired into npm and
+          # every npm command fails with ENEEDAUTH.
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -48,13 +52,10 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Verify npm auth
-        run: npm whoami
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Semantic Release
         run: pnpm exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # NODE_AUTH_TOKEN is read by the .npmrc written above — must match NPM_TOKEN.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
