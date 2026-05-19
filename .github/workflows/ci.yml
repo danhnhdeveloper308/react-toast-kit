@@ -21,7 +21,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -56,4 +56,4 @@ jobs:
           echo "## CI Results" >> $GITHUB_STEP_SUMMARY
           echo "- Node: $(node -v)" >> $GITHUB_STEP_SUMMARY
           echo "- pnpm: $(pnpm -v)" >> $GITHUB_STEP_SUMMARY
-          echo "- Package: $(node -p "require('./package.json').name + '@' + require('./package.json').version")" >> $GITHUB_STEP_SUMMARY
+          echo "- Package: $(node -e "const p=require('./package.json');process.stdout.write(p.name+'@'+p.version)")" >> $GITHUB_STEP_SUMMARY
