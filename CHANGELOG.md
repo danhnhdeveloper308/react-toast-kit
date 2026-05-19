@@ -1,3 +1,10 @@
+# 1.0.0 (2026-05-19)
+
+
+### Bug Fixes
+
+* eliminate duplicate workflows, fix CI auth and lint warnings ([5ed57ca](https://github.com/danhnhdeveloper308/react-toast-kit/commit/5ed57cacb3df9911de8b07e087e9440919fda385))
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
