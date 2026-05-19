@@ -448,14 +448,16 @@ export const ToastDevTools: React.FC = () => {
             <>
               {/* Tabs */}
               <div style={stylesObj.tabsContainer as React.CSSProperties}>
-                {[
-                  { key: 'monitor', label: 'Monitor', icon: '📊' },
-                  { key: 'create', label: 'Create', icon: '➕' },
-                  { key: 'settings', label: 'Settings', icon: '⚙️' }
-                ].map(tab => (
+                {(
+                  [
+                    { key: 'monitor', label: 'Monitor', icon: '📊' },
+                    { key: 'create', label: 'Create', icon: '➕' },
+                    { key: 'settings', label: 'Settings', icon: '⚙️' },
+                  ] as Array<{ key: 'monitor' | 'create' | 'settings'; label: string; icon: string }>
+                ).map(tab => (
                   <button
                     key={tab.key}
-                    onClick={() => setActiveTab(tab.key as any)}
+                    onClick={() => setActiveTab(tab.key)}
                     style={stylesObj.tab(activeTab === tab.key) as React.CSSProperties}
                   >
                     <span style={{ marginRight: '4px' }}>{tab.icon}</span>

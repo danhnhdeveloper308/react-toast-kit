@@ -1,9 +1,0 @@
-# This workflow has been superseded by auto-publish.yml (semantic-release).
-# It is kept as an empty file to avoid breaking any external references.
-# See .releaserc.json for the release configuration.
-#
-# To trigger a release: push a conventional commit to main.
-#   fix: …        → patch bump  (1.0.x)
-#   feat: …       → minor bump  (1.x.0)
-#   feat!: … or
-#   BREAKING CHANGE: … → major bump (x.0.0)

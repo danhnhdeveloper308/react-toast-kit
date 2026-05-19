@@ -529,8 +529,10 @@ if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     };
     if (typeof darkModeQuery.addEventListener === 'function') {
       darkModeQuery.addEventListener('change', handleSystemThemeChange);
-    } else if (typeof (darkModeQuery as any).addListener === 'function') {
-      (darkModeQuery as any).addListener(handleSystemThemeChange);
+    } else {
+      // Legacy Safari <14 fallback — addListener was deprecated in favour of addEventListener
+      const legacy = darkModeQuery as MediaQueryList & { addListener?: (cb: () => void) => void };
+      legacy.addListener?.(handleSystemThemeChange);
     }
     // Initialize effective theme on load
     useToastStore.getState().updateEffectiveTheme();
@@ -764,6 +766,7 @@ export const toastDevTools = {
         clearAll: () => useToastStore.getState().clearAllToasts(),
         debugInfo: () => {
           const state = useToastStore.getState();
+          /* eslint-disable no-console */
           console.group('React Toast Kit Debug Info');
           console.table(
             state.toasts.map((t) => ({
@@ -780,6 +783,7 @@ export const toastDevTools = {
           console.log('Active timers:', state.activeTimers.size);
           console.log('Registered plugins:', state.plugins.map((p) => p.name));
           console.groupEnd();
+          /* eslint-enable no-console */
         },
         getStore: () => useToastStore.getState(),
         simulateError: () => toast.error('Test error toast for debugging'),

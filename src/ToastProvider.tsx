@@ -1,4 +1,10 @@
 import * as React from 'react';
+
+declare global {
+  interface Window {
+    __TOAST_DEV_MODE__?: boolean;
+  }
+}
 import { useToastStore } from './toast';
 import type { ToastTheme, ToastPosition, ToastAnimation, ToastStyle, ProgressBarStyle } from './toast';
 import ToastPortal from './ToastPortal';
@@ -174,11 +180,11 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
   // Dev mode: expose store reference on window for debugging
   useEffect(() => {
     if (enableDevMode && typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-      (window as any).__TOAST_DEV_MODE__ = true;
+      window.__TOAST_DEV_MODE__ = true;
     }
     return () => {
       if (typeof window !== 'undefined') {
-        delete (window as any).__TOAST_DEV_MODE__;
+        delete window.__TOAST_DEV_MODE__;
       }
     };
   }, [enableDevMode]);
