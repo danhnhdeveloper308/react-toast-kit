@@ -30,12 +30,15 @@ jobs:
   publish:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    env:
+      RELEASE_GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      RELEASE_NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN || github.token }}
+          token: ${{ env.RELEASE_GH_TOKEN || github.token }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -46,7 +49,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
@@ -78,7 +80,7 @@ jobs:
       - name: Publish to npm
         run: npm publish --access public --provenance
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.RELEASE_NPM_TOKEN }}
 
       - name: Commit release metadata
         env:
@@ -93,12 +95,12 @@ jobs:
 
       - name: Create GitHub release
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          GH_TOKEN: ${{ env.RELEASE_GH_TOKEN || github.token }}
           NEXT_VERSION: ${{ steps.version.outputs.next }}
         run: gh release create "v${NEXT_VERSION}" --generate-notes --title "react-toast-kit v${NEXT_VERSION}"
 
       - name: Refresh documentation deployment
-        if: ${{ secrets.GH_TOKEN != '' }}
+        if: env.RELEASE_GH_TOKEN != ''
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ env.RELEASE_GH_TOKEN }}
         run: gh workflow run deploy.yml --repo danhnhdeveloper308/react-toast-kit-docs --ref main
