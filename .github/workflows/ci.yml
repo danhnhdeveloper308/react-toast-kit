@@ -33,13 +33,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm lint || echo "⚠️  Lint warnings (non-blocking)"
+        run: pnpm lint
 
       - name: Type check
         run: pnpm typecheck
 
       - name: Build
         run: pnpm build
+
+      - name: Bundle and performance budgets
+        run: pnpm benchmark
 
       - name: Verify build outputs
         run: |
@@ -48,7 +51,7 @@ jobs:
           done
 
       - name: Test
-        run: pnpm test --run || echo "⚠️  No tests found or tests failed (non-blocking)"
+        run: pnpm test
 
       - name: Summary
         if: always()

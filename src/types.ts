@@ -81,8 +81,6 @@ export interface ToastProviderProps {
   leftOffset?: number;
   rightOffset?: number;
   enableAccessibleAnnouncements?: boolean;
-  enableDevMode?: boolean;
-  enableDevTools?: boolean;
   suppressHydrationWarning?: boolean;
   globalClassName?: string;
   globalStyle?: React.CSSProperties;

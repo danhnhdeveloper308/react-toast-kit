@@ -1,9 +1,17 @@
 import * as React from 'react';
 import { useToastStore } from './toast';
-import { useShallow } from 'zustand/shallow';
 import type { ToastTheme, ToastPosition } from './toast';
 
 const { useCallback, useMemo } = React;
+
+const shallowEqual = <T extends Record<string, unknown>>(previous: T, next: T) => {
+  if (Object.is(previous, next)) return true;
+  const keys = Object.keys(previous);
+  return (
+    keys.length === Object.keys(next).length &&
+    keys.every((key) => Object.is(previous[key], next[key]))
+  );
+};
 
 /**
  * Primary hook — exposes toast state and actions for component use.
@@ -30,7 +38,7 @@ export const useToast = () => {
     registerPlugin,
     unregisterPlugin,
   } = useToastStore(
-    useShallow((state) => ({
+    (state) => ({
       toasts: state.toasts,
       theme: state.theme,
       effectiveTheme: state.effectiveTheme,
@@ -46,7 +54,8 @@ export const useToast = () => {
       setMaxToasts: state.setMaxToasts,
       registerPlugin: state.registerPlugin,
       unregisterPlugin: state.unregisterPlugin,
-    }))
+    }),
+    shallowEqual
   );
 
   const stats = useMemo(
@@ -56,10 +65,13 @@ export const useToast = () => {
         acc[t.variant] = (acc[t.variant] || 0) + 1;
         return acc;
       }, {}),
-      byPosition: toasts.reduce<Record<ToastPosition, number>>((acc, t) => {
-        acc[t.position] = (acc[t.position] || 0) + 1;
-        return acc;
-      }, {} as Record<ToastPosition, number>),
+      byPosition: toasts.reduce<Record<ToastPosition, number>>(
+        (acc, t) => {
+          acc[t.position] = (acc[t.position] || 0) + 1;
+          return acc;
+        },
+        {} as Record<ToastPosition, number>
+      ),
     }),
     [toasts]
   );
@@ -94,13 +106,14 @@ export const useToast = () => {
  */
 export const useToastConfig = () =>
   useToastStore(
-    useShallow((state) => ({
+    (state) => ({
       theme: state.theme,
       effectiveTheme: state.effectiveTheme,
       setTheme: state.setTheme,
       maxToasts: state.maxToasts,
       setMaxToasts: state.setMaxToasts,
-    }))
+    }),
+    shallowEqual
   );
 
 /**
@@ -111,18 +124,27 @@ export const useToastStats = () => {
   return useMemo(
     () => ({
       total: toasts.length,
-      byVariant: toasts.reduce((acc, t) => {
-        acc[t.variant] = (acc[t.variant] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      byPosition: toasts.reduce((acc, t) => {
-        acc[t.position] = (acc[t.position] || 0) + 1;
-        return acc;
-      }, {} as Record<ToastPosition, number>),
-      byTheme: toasts.reduce((acc, t) => {
-        acc[t.theme] = (acc[t.theme] || 0) + 1;
-        return acc;
-      }, {} as Record<ToastTheme, number>),
+      byVariant: toasts.reduce(
+        (acc, t) => {
+          acc[t.variant] = (acc[t.variant] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      ),
+      byPosition: toasts.reduce(
+        (acc, t) => {
+          acc[t.position] = (acc[t.position] || 0) + 1;
+          return acc;
+        },
+        {} as Record<ToastPosition, number>
+      ),
+      byTheme: toasts.reduce(
+        (acc, t) => {
+          acc[t.theme] = (acc[t.theme] || 0) + 1;
+          return acc;
+        },
+        {} as Record<ToastTheme, number>
+      ),
     }),
     [toasts]
   );

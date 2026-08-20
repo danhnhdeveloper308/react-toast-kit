@@ -1,18 +1,23 @@
-import { JSX } from 'react';
-import { create } from 'zustand';
+import { JSX, useRef, useSyncExternalStore } from 'react';
 
 export type ToastPosition =
-  | 'top-right'
-  | 'top-center'
-  | 'top-left'
-  | 'bottom-right'
-  | 'bottom-center'
-  | 'bottom-left';
+  'top-right' | 'top-center' | 'top-left' | 'bottom-right' | 'bottom-center' | 'bottom-left';
 
-export type ToastVariant = 'success' | 'error' | 'info' | 'warning' | 'default' | 'custom' | 'loading';
+export type ToastVariant =
+  'success' | 'error' | 'info' | 'warning' | 'default' | 'custom' | 'loading';
 export type ToastTheme = 'light' | 'dark' | 'system';
 export type ToastAnimation = 'slide' | 'fade' | 'bounce' | 'flip' | 'zoom' | 'none' | 'elastic';
-export type ToastStyle = 'solid' | 'gradient' | 'glass' | 'shimmer' | 'pill' | 'neon' | 'retro' | 'confetti' | 'minimal' | 'outlined';
+export type ToastStyle =
+  | 'solid'
+  | 'gradient'
+  | 'glass'
+  | 'shimmer'
+  | 'pill'
+  | 'neon'
+  | 'retro'
+  | 'confetti'
+  | 'minimal'
+  | 'outlined';
 
 export interface ToastAction {
   label: string;
@@ -89,7 +94,19 @@ export interface StrictToastOptions extends Omit<ToastOptions, 'variant' | 'posi
   position: ToastPosition;
 }
 
-export interface Toast extends Required<Pick<ToastOptions, 'id' | 'variant' | 'position' | 'duration' | 'pauseOnHover' | 'dismissible' | 'dismissOnClick' | 'theme'>> {
+export interface Toast extends Required<
+  Pick<
+    ToastOptions,
+    | 'id'
+    | 'variant'
+    | 'position'
+    | 'duration'
+    | 'pauseOnHover'
+    | 'dismissible'
+    | 'dismissOnClick'
+    | 'theme'
+  >
+> {
   title?: string;
   description?: string;
   icon?: JSX.Element;
@@ -115,6 +132,7 @@ export interface Toast extends Required<Pick<ToastOptions, 'id' | 'variant' | 'p
   actions?: ToastAction[];
   iconString?: string;
   updating?: boolean;
+  exiting?: boolean;
 }
 
 // Provider-level defaults stored in the Zustand store so the imperative
@@ -172,13 +190,14 @@ const getSystemTheme = (): 'light' | 'dark' => {
   }
 };
 
-interface ToastState {
+export interface ToastState {
   toasts: Toast[];
   maxToasts: number;
   theme: ToastTheme;
   effectiveTheme: 'light' | 'dark';
   pausedToasts: Set<string>;
-  activeTimers: Map<string, number>;
+  activeTimers: Map<string, ReturnType<typeof setTimeout>>;
+  exitTimers: Map<string, ReturnType<typeof setTimeout>>;
   // Tracks when each active timer was started so we can compute remaining time on pause
   timerStartedAt: Map<string, number>;
   // Stores the remaining ms for paused toasts so resume restarts from the right point
@@ -201,13 +220,67 @@ interface ToastState {
   unregisterPlugin: (name: string) => void;
 }
 
-export const useToastStore = create<ToastState>((set, get) => ({
+type StateSelector<T, U> = (state: T) => U;
+type EqualityFn<U> = (previous: U, next: U) => boolean;
+type StateUpdater<T> = Partial<T> | ((state: T) => Partial<T>);
+
+const createStore = <T extends object>(
+  initializer: (set: (update: StateUpdater<T>) => void, get: () => T) => T
+) => {
+  let state: T;
+  const listeners = new Set<() => void>();
+  const getState = () => state;
+  const setState = (update: StateUpdater<T>) => {
+    const partial = typeof update === 'function' ? update(state) : update;
+    const next = { ...state, ...partial };
+    if (Object.is(next, state)) return;
+    state = next;
+    listeners.forEach((listener) => listener());
+  };
+  const subscribe = (listener: () => void) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  };
+
+  state = initializer(setState, getState);
+
+  function useStore<U = T>(
+    selector: StateSelector<T, U> = (value: T) => value as unknown as U,
+    equality: EqualityFn<U> = Object.is
+  ): U {
+    const cache = useRef<{ state?: T; selection?: U }>({});
+    const getSelection = () => {
+      const current = getState();
+      if (cache.current.state === current) return cache.current.selection as U;
+      const nextSelection = selector(current);
+      if (
+        cache.current.state !== undefined &&
+        cache.current.selection !== undefined &&
+        equality(cache.current.selection, nextSelection)
+      ) {
+        cache.current.state = current;
+        return cache.current.selection;
+      }
+      cache.current = { state: current, selection: nextSelection };
+      return nextSelection;
+    };
+    return useSyncExternalStore(subscribe, getSelection, getSelection);
+  }
+
+  useStore.getState = getState;
+  useStore.setState = setState;
+  useStore.subscribe = subscribe;
+  return useStore;
+};
+
+export const useToastStore = createStore<ToastState>((set, get) => ({
   toasts: [],
   maxToasts: DEFAULT_MAX_TOASTS,
   theme: DEFAULT_THEME,
   effectiveTheme: getSystemTheme(),
   pausedToasts: new Set<string>(),
-  activeTimers: new Map<string, number>(),
+  activeTimers: new Map<string, ReturnType<typeof setTimeout>>(),
+  exitTimers: new Map<string, ReturnType<typeof setTimeout>>(),
   timerStartedAt: new Map<string, number>(),
   remainingTime: new Map<string, number>(),
   plugins: [],
@@ -237,9 +310,14 @@ export const useToastStore = create<ToastState>((set, get) => ({
             variant: result.variant || processedToast.variant,
             position: result.position || processedToast.position,
             duration: result.duration !== undefined ? result.duration : processedToast.duration,
-            pauseOnHover: result.pauseOnHover !== undefined ? result.pauseOnHover : processedToast.pauseOnHover,
-            dismissible: result.dismissible !== undefined ? result.dismissible : processedToast.dismissible,
-            dismissOnClick: result.dismissOnClick !== undefined ? result.dismissOnClick : processedToast.dismissOnClick,
+            pauseOnHover:
+              result.pauseOnHover !== undefined ? result.pauseOnHover : processedToast.pauseOnHover,
+            dismissible:
+              result.dismissible !== undefined ? result.dismissible : processedToast.dismissible,
+            dismissOnClick:
+              result.dismissOnClick !== undefined
+                ? result.dismissOnClick
+                : processedToast.dismissOnClick,
             theme: result.theme || processedToast.theme,
             createdAt: processedToast.createdAt,
             style: mergedStyle,
@@ -252,8 +330,13 @@ export const useToastStore = create<ToastState>((set, get) => ({
       // Remove oldest toast if at capacity (read fresh state after potential prior removals)
       const toastsBeforeAdd = get().toasts;
       if (toastsBeforeAdd.length >= get().maxToasts) {
+        const priorityWeight = { low: 0, normal: 1, high: 2 } as const;
         const oldest = [...toastsBeforeAdd]
-          .sort((a, b) => a.createdAt - b.createdAt)
+          .sort(
+            (a, b) =>
+              priorityWeight[a.priority || 'normal'] - priorityWeight[b.priority || 'normal'] ||
+              a.createdAt - b.createdAt
+          )
           .find((t) => t.id !== processedToast.id);
         if (oldest) {
           get().removeToast(oldest.id);
@@ -280,9 +363,9 @@ export const useToastStore = create<ToastState>((set, get) => ({
         if (existing) clearTimeout(existing);
 
         const now = Date.now();
-        const timerId = window.setTimeout(() => {
+        const timerId = setTimeout(() => {
           get().removeToast(processedToast.id);
-        }, processedToast.duration) as unknown as number;
+        }, processedToast.duration);
 
         set((state) => ({
           activeTimers: new Map(state.activeTimers).set(processedToast.id, timerId),
@@ -303,9 +386,9 @@ export const useToastStore = create<ToastState>((set, get) => ({
 
   removeToast: (id) => {
     try {
-      const { toasts, plugins, activeTimers } = get();
+      const { toasts, plugins, activeTimers, exitTimers } = get();
       const toast = toasts.find((t) => t.id === id);
-      if (!toast) return;
+      if (!toast || toast.exiting) return;
 
       let shouldRemove = true;
       for (const plugin of plugins) {
@@ -317,8 +400,34 @@ export const useToastStore = create<ToastState>((set, get) => ({
 
       const timerId = activeTimers.get(id);
       if (timerId) clearTimeout(timerId);
+      const existingExitTimer = exitTimers.get(id);
+      if (existingExitTimer) clearTimeout(existingExitTimer);
 
-      toast.onDismiss?.(id);
+      const reducedMotion =
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const customDuration = Number(toast.customAnimation?.transition?.duration);
+      const exitDuration = reducedMotion
+        ? 0
+        : Number.isFinite(customDuration)
+          ? Math.max(0, customDuration * 1000)
+          : 220;
+
+      const exitTimer = setTimeout(() => {
+        const current = get().toasts.find((item) => item.id === id);
+        if (!current) return;
+        current.onDismiss?.(id);
+        set((state) => {
+          const nextExitTimers = new Map(state.exitTimers);
+          nextExitTimers.delete(id);
+          return {
+            toasts: state.toasts.filter((item) => item.id !== id),
+            exitTimers: nextExitTimers,
+          };
+        });
+        get().plugins.forEach((plugin) => plugin.afterRemove?.(current));
+      }, exitDuration);
 
       set((state) => {
         const newActiveTimers = new Map(state.activeTimers);
@@ -330,17 +439,14 @@ export const useToastStore = create<ToastState>((set, get) => ({
         const newPausedToasts = new Set(state.pausedToasts);
         newPausedToasts.delete(id);
         return {
-          toasts: state.toasts.filter((t) => t.id !== id),
+          toasts: state.toasts.map((item) => (item.id === id ? { ...item, exiting: true } : item)),
           pausedToasts: newPausedToasts,
           activeTimers: newActiveTimers,
+          exitTimers: new Map(state.exitTimers).set(id, exitTimer),
           timerStartedAt: newTimerStartedAt,
           remainingTime: newRemainingTime,
         };
       });
-
-      for (const plugin of plugins) {
-        plugin.afterRemove?.(toast);
-      }
     } catch (error) {
       console.error('React Toast Kit: Failed to remove toast', error);
     }
@@ -363,9 +469,9 @@ export const useToastStore = create<ToastState>((set, get) => ({
         const updated = get().toasts.find((t) => t.id === id);
         if (updated && updated.duration > 0 && !pausedToasts.has(id)) {
           const now = Date.now();
-          const newTimerId = window.setTimeout(() => {
+          const newTimerId = setTimeout(() => {
             get().removeToast(id);
-          }, updated.duration) as unknown as number;
+          }, updated.duration);
 
           set((state) => ({
             activeTimers: new Map(state.activeTimers).set(id, newTimerId),
@@ -408,7 +514,11 @@ export const useToastStore = create<ToastState>((set, get) => ({
           const newTimerStartedAt = new Map(state.timerStartedAt);
           newTimerStartedAt.delete(id);
           const newRemainingTime = new Map(state.remainingTime).set(id, remaining);
-          return { activeTimers: newActiveTimers, timerStartedAt: newTimerStartedAt, remainingTime: newRemainingTime };
+          return {
+            activeTimers: newActiveTimers,
+            timerStartedAt: newTimerStartedAt,
+            remainingTime: newRemainingTime,
+          };
         });
       } else {
         set((state) => {
@@ -435,13 +545,14 @@ export const useToastStore = create<ToastState>((set, get) => ({
     if (!toast || toast.duration <= 0) return;
 
     // Use stored remaining time if available (correct after multiple pause/resume cycles)
-    const remaining = remainingTime.get(id) ?? Math.max(0, toast.duration - (Date.now() - toast.createdAt));
+    const remaining =
+      remainingTime.get(id) ?? Math.max(0, toast.duration - (Date.now() - toast.createdAt));
 
     if (remaining > 0) {
       const now = Date.now();
-      const timerId = window.setTimeout(() => {
+      const timerId = setTimeout(() => {
         get().removeToast(id);
-      }, remaining) as unknown as number;
+      }, remaining);
 
       set((state) => {
         const newRemainingTime = new Map(state.remainingTime);
@@ -457,13 +568,15 @@ export const useToastStore = create<ToastState>((set, get) => ({
 
   clearAllToasts: () => {
     try {
-      const { toasts, activeTimers } = get();
+      const { toasts, activeTimers, exitTimers } = get();
       activeTimers.forEach((timerId) => clearTimeout(timerId));
+      exitTimers.forEach((timerId) => clearTimeout(timerId));
       toasts.forEach((toast) => toast.onDismiss?.(toast.id));
       set({
         toasts: [],
         pausedToasts: new Set(),
         activeTimers: new Map(),
+        exitTimers: new Map(),
         timerStartedAt: new Map(),
         remainingTime: new Map(),
       });
@@ -489,13 +602,15 @@ export const useToastStore = create<ToastState>((set, get) => ({
 
   cleanup: () => {
     try {
-      const { activeTimers, toasts } = get();
+      const { activeTimers, exitTimers, toasts } = get();
       activeTimers.forEach((timerId) => clearTimeout(timerId));
+      exitTimers.forEach((timerId) => clearTimeout(timerId));
       toasts.forEach((toast) => toast.onDismiss?.(toast.id));
       set({
         toasts: [],
         pausedToasts: new Set(),
         activeTimers: new Map(),
+        exitTimers: new Map(),
         timerStartedAt: new Map(),
         remainingTime: new Map(),
       });
@@ -680,14 +795,16 @@ toast.promise = async <T>(
     error: ((error: unknown) => ToastOptions | string) | ToastOptions | string;
   }
 ): Promise<T> => {
-  const loadingOpts = typeof options.loading === 'string' ? { description: options.loading } : options.loading;
+  const loadingOpts =
+    typeof options.loading === 'string' ? { description: options.loading } : options.loading;
   const id = createToast({ ...loadingOpts, variant: 'loading', duration: 0 });
 
   const defaultDuration = useToastStore.getState().config.defaultDuration;
 
   try {
     const data = await promise;
-    const successOpts = typeof options.success === 'function' ? options.success(data) : options.success;
+    const successOpts =
+      typeof options.success === 'function' ? options.success(data) : options.success;
     toast.update(
       id,
       typeof successOpts === 'string'
@@ -710,7 +827,12 @@ toast.promise = async <T>(
 toast.update = (id: string, options: Partial<ToastOptions>) => {
   try {
     const existing = useToastStore.getState().toasts.find((t) => t.id === id);
-    if (existing?.variant === 'loading' && options.variant && options.variant !== 'loading' && !options.duration) {
+    if (
+      existing?.variant === 'loading' &&
+      options.variant &&
+      options.variant !== 'loading' &&
+      !options.duration
+    ) {
       options.duration = useToastStore.getState().config.defaultDuration;
     }
     useToastStore.getState().updateToast(id, options as Partial<Toast>);
@@ -741,53 +863,4 @@ export const unregisterPlugin = (name: string) => {
 
 export const cleanup = () => {
   useToastStore.getState().cleanup();
-};
-
-export const toastDevTools = {
-  show: () => {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('react-toast-kit:devtools:show'));
-    }
-  },
-  hide: () => {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('react-toast-kit:devtools:hide'));
-    }
-  },
-  toggle: () => {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('react-toast-kit:devtools:toggle'));
-    }
-  },
-  getToasts: () => useToastStore.getState().toasts,
-  ...(typeof process !== 'undefined' && process.env.NODE_ENV === 'development'
-    ? {
-        getActiveToasts: () => useToastStore.getState().toasts,
-        clearAll: () => useToastStore.getState().clearAllToasts(),
-        debugInfo: () => {
-          const state = useToastStore.getState();
-          /* eslint-disable no-console */
-          console.group('React Toast Kit Debug Info');
-          console.table(
-            state.toasts.map((t) => ({
-              id: t.id,
-              variant: t.variant,
-              position: t.position,
-              duration: t.duration,
-              priority: t.priority,
-              createdAt: new Date(t.createdAt).toLocaleTimeString(),
-            }))
-          );
-          console.log('Theme:', state.theme, '| Effective:', state.effectiveTheme);
-          console.log('Paused toasts:', Array.from(state.pausedToasts));
-          console.log('Active timers:', state.activeTimers.size);
-          console.log('Registered plugins:', state.plugins.map((p) => p.name));
-          console.groupEnd();
-          /* eslint-enable no-console */
-        },
-        getStore: () => useToastStore.getState(),
-        simulateError: () => toast.error('Test error toast for debugging'),
-        simulateSuccess: () => toast.success('Test success toast for debugging'),
-      }
-    : {}),
 };

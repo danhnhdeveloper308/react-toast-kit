@@ -17,6 +17,7 @@ Thank you for considering contributing to React Toast Kit! This document outline
 ## Building the Project
 
 To create a production build:
+
 ```bash
 pnpm build
 ```
@@ -38,12 +39,17 @@ This uses tsup to bundle the library in both CommonJS and ESM formats with type 
    ```bash
    pnpm lint
    ```
-4. Build the project to ensure everything compiles:
+4. Run type checks and tests:
+   ```bash
+   pnpm typecheck
+   pnpm test
+   ```
+5. Build the project to ensure everything compiles:
    ```bash
    pnpm build
    ```
-5. Commit your changes with a descriptive commit message
-6. Push your branch and create a pull request
+6. Commit your changes with a descriptive commit message
+7. Push your branch and create a pull request
 
 ## Commit Message Format
 

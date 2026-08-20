@@ -1,10 +1,7 @@
 import { defineConfig } from 'tsup';
 import { readFileSync, writeFileSync } from 'fs';
 
-const css = [
-  readFileSync('src/index.css', 'utf-8'),
-  readFileSync('src/progress-styles.css', 'utf-8'),
-].join('\n');
+const css = readFileSync('src/index.css', 'utf-8');
 
 // "use client" must be prepended AFTER esbuild finishes — esbuild strips bare
 // string directives from bundled output (github.com/evanw/esbuild/issues/2682).
@@ -16,53 +13,30 @@ function prependUseClient(file: string) {
   }
 }
 
-export default defineConfig([
-  // ── Main entry ──────────────────────────────────────────────────────────────
-  {
-    entry: { index: 'src/index.ts' },
-    format: ['cjs', 'esm'],
-    outExtension: ({ format }) => ({ js: format === 'esm' ? '.mjs' : '.cjs' }),
-    dts: true,
-    sourcemap: true,
-    clean: true,
-    treeshake: true,
-    minify: true,
-    splitting: false,
-    external: ['react', 'react-dom', 'react/jsx-runtime', 'framer-motion'],
-    // __CSS_CONTENT__ is replaced at esbuild compile time — no runtime file I/O.
-    define: { __CSS_CONTENT__: JSON.stringify(css) },
-    esbuildOptions(options) {
-      options.jsx = 'automatic';
-    },
-    async onSuccess() {
-      prependUseClient('dist/index.mjs');
-      prependUseClient('dist/index.cjs');
-      // Ship raw styles.css for users who prefer explicit imports:
-      //   import 'react-toast-kit/styles.css'
-      writeFileSync('dist/styles.css', css);
-      writeFileSync('dist/styles.d.ts', 'declare const css: string;\nexport default css;\n');
-    },
+export default defineConfig({
+  entry: { index: 'src/index.ts', core: 'src/core.ts' },
+  format: ['cjs', 'esm'],
+  outExtension: ({ format }) => ({ js: format === 'esm' ? '.mjs' : '.cjs' }),
+  dts: true,
+  sourcemap: false,
+  clean: true,
+  treeshake: true,
+  minify: true,
+  splitting: false,
+  external: ['react', 'react-dom', 'react/jsx-runtime'],
+  // __CSS_CONTENT__ is replaced at esbuild compile time — no runtime file I/O.
+  define: { __CSS_CONTENT__: JSON.stringify(css) },
+  esbuildOptions(options) {
+    options.jsx = 'automatic';
   },
-
-  // ── DevTools entry ──────────────────────────────────────────────────────────
-  // Separate chunk — users who don't import DevTools pay zero bundle cost.
-  {
-    entry: { 'devtools-entry': 'src/devtools-entry.ts' },
-    format: ['cjs', 'esm'],
-    outExtension: ({ format }) => ({ js: format === 'esm' ? '.mjs' : '.cjs' }),
-    dts: true,
-    sourcemap: true,
-    clean: false,
-    treeshake: true,
-    minify: true,
-    splitting: false,
-    external: ['react', 'react-dom', 'react/jsx-runtime', 'framer-motion'],
-    esbuildOptions(options) {
-      options.jsx = 'automatic';
-    },
-    async onSuccess() {
-      prependUseClient('dist/devtools-entry.mjs');
-      prependUseClient('dist/devtools-entry.cjs');
-    },
+  async onSuccess() {
+    prependUseClient('dist/index.mjs');
+    prependUseClient('dist/index.cjs');
+    prependUseClient('dist/core.mjs');
+    prependUseClient('dist/core.cjs');
+    // Ship raw styles.css for users who prefer explicit imports:
+    //   import 'react-toast-kit/styles.css'
+    writeFileSync('dist/styles.css', css);
+    writeFileSync('dist/styles.d.ts', 'declare const css: string;\nexport default css;\n');
   },
-]);
+});

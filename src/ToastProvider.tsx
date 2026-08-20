@@ -1,18 +1,18 @@
 import * as React from 'react';
-
-declare global {
-  interface Window {
-    __TOAST_DEV_MODE__?: boolean;
-  }
-}
 import { useToastStore } from './toast';
-import type { ToastTheme, ToastPosition, ToastAnimation, ToastStyle, ProgressBarStyle } from './toast';
+import type {
+  ToastTheme,
+  ToastPosition,
+  ToastAnimation,
+  ToastStyle,
+  ProgressBarStyle,
+} from './toast';
 import ToastPortal from './ToastPortal';
 
 const { createContext, useContext, useEffect, useMemo } = React;
 
 interface ToastProviderProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 
   // Basic configuration
   theme?: ToastTheme;
@@ -52,8 +52,6 @@ interface ToastProviderProps {
 
   // Features
   enableAccessibleAnnouncements?: boolean;
-  enableDevMode?: boolean;
-  enableDevTools?: boolean;
   suppressHydrationWarning?: boolean;
 
   // Global overrides
@@ -115,8 +113,6 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
   leftOffset,
   rightOffset,
   enableAccessibleAnnouncements = true,
-  enableDevMode = false,
-  enableDevTools = false,
   suppressHydrationWarning = false,
   globalClassName,
   globalStyle,
@@ -177,18 +173,6 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
     globalStyle,
   ]);
 
-  // Dev mode: expose store reference on window for debugging
-  useEffect(() => {
-    if (enableDevMode && typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-      window.__TOAST_DEV_MODE__ = true;
-    }
-    return () => {
-      if (typeof window !== 'undefined') {
-        delete window.__TOAST_DEV_MODE__;
-      }
-    };
-  }, [enableDevMode]);
-
   const contextValue = useMemo<ToastProviderContext>(
     () => ({
       theme,
@@ -240,16 +224,6 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
     ]
   );
 
-  // DevTools are only rendered in development and only when explicitly enabled.
-  // Loaded lazily to keep the main bundle free of DevTools code.
-  const DevToolsComponent = useMemo(() => {
-    if (!enableDevTools || process.env.NODE_ENV !== 'development') return null;
-    // Lazy-require so the DevTools module is excluded from production bundles
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { ToastDevTools } = require('./DevTools');
-    return ToastDevTools as React.FC;
-  }, [enableDevTools]);
-
   return (
     <ToastProviderContext.Provider value={contextValue}>
       {children}
@@ -264,7 +238,6 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({
         enableAccessibleAnnouncements={enableAccessibleAnnouncements}
         suppressHydrationWarning={suppressHydrationWarning}
       />
-      {DevToolsComponent && <DevToolsComponent />}
     </ToastProviderContext.Provider>
   );
 };

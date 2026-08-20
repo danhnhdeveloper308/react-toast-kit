@@ -1,729 +1,675 @@
-/* ─── React Toast Kit — index.css ─────────────────────────────────────────── */
-
-/* Container */
+/* React Toast Kit — compact, framework-agnostic theme */
 .react-toast-container {
   position: fixed;
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.625rem;
   pointer-events: none;
+  isolation: isolate;
 }
-
-.react-toast-container[data-position="top-right"]    { top: 1rem; right: 1rem; align-items: flex-end; }
-.react-toast-container[data-position="top-center"]   { top: 1rem; left: 50%; transform: translateX(-50%); align-items: center; }
-.react-toast-container[data-position="top-left"]     { top: 1rem; left: 1rem; align-items: flex-start; }
-.react-toast-container[data-position="bottom-right"] { bottom: 1rem; right: 1rem; align-items: flex-end; }
-.react-toast-container[data-position="bottom-center"]{ bottom: 1rem; left: 50%; transform: translateX(-50%); align-items: center; }
-.react-toast-container[data-position="bottom-left"]  { bottom: 1rem; left: 1rem; align-items: flex-start; }
-
-/* Item */
 .react-toast-item {
   width: 100%;
+  max-width: 390px;
   pointer-events: auto;
-  max-width: 380px;
+  animation: rtk-slide 0.34s cubic-bezier(0.21, 1.02, 0.73, 1) both;
 }
-
-@media (max-width: 640px) {
-  .react-toast-item { max-width: 92vw; }
+.react-toast-item[data-animation='none'] {
+  animation: none;
 }
-
-/* ─── Base toast ─────────────────────────────────────────────────────────── */
+.react-toast-item[data-animation='slide'] {
+  animation-name: rtk-slide;
+}
+.react-toast-item[data-animation='fade'] {
+  animation-name: rtk-fade;
+}
+.react-toast-item[data-animation='zoom'] {
+  animation-name: rtk-zoom;
+}
+.react-toast-item[data-animation='bounce'] {
+  animation-name: rtk-bounce;
+  animation-duration: 0.46s;
+}
+.react-toast-item[data-animation='elastic'] {
+  animation-name: rtk-elastic;
+  animation-duration: 0.58s;
+}
+.react-toast-item[data-animation='flip'] {
+  animation-name: rtk-flip;
+  transform-origin: top center;
+}
+.react-toast-item[data-position^='bottom'] {
+  --rtk-y: 16px;
+}
+.react-toast-item[data-position^='top'] {
+  --rtk-y: -16px;
+}
+.react-toast-item[data-position$='left'] {
+  --rtk-x: -16px;
+  --rtk-y: 0;
+}
+.react-toast-item[data-position$='right'] {
+  --rtk-x: 16px;
+  --rtk-y: 0;
+}
+.react-toast-item[data-updating] {
+  animation: rtk-update 0.2s ease-out;
+}
+.react-toast-item[data-exiting] {
+  pointer-events: none;
+  animation: rtk-exit 0.22s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+@keyframes rtk-exit {
+  to {
+    opacity: 0;
+    transform: translate3d(var(--rtk-x, 0), calc(var(--rtk-y, 8px) * -0.5), 0) scale(0.96);
+  }
+}
+@keyframes rtk-slide {
+  from {
+    opacity: 0;
+    transform: translate3d(var(--rtk-x, 0), var(--rtk-y, -16px), 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rtk-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes rtk-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes rtk-bounce {
+  0% {
+    opacity: 0;
+    transform: translate3d(var(--rtk-x, 0), var(--rtk-y, -12px), 0) scale(0.88);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.025);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes rtk-elastic {
+  0% {
+    opacity: 0;
+    transform: translate3d(var(--rtk-x, 0), var(--rtk-y, -10px), 0) scale(0.72, 1.08);
+  }
+  48% {
+    opacity: 1;
+    transform: scale(1.06, 0.96);
+  }
+  72% {
+    transform: scale(0.985, 1.015);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes rtk-flip {
+  from {
+    opacity: 0;
+    transform: perspective(500px) rotateX(-20deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rtk-update {
+  50% {
+    transform: scale(0.985);
+    opacity: 0.85;
+  }
+}
 .react-toast {
+  --rtk-accent: #64748b;
+  --rtk-soft: rgba(100, 116, 139, 0.13);
+  --rtk-surface: #fff;
+  --rtk-text: #172033;
+  --rtk-muted: #64748b;
+  --rtk-border: rgba(15, 23, 42, 0.1);
   position: relative;
   overflow: hidden;
-  border-radius: 0.625rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-size: 0.9375rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  border: 1px solid var(--rtk-border);
+  border-radius: 14px;
+  background: var(--rtk-surface);
+  color: var(--rtk-text);
+  box-shadow:
+    0 14px 35px -12px rgba(15, 23, 42, 0.24),
+    0 3px 9px rgba(15, 23, 42, 0.06);
+  font:
+    400 0.9375rem/1.45 ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  text-align: start;
   word-break: break-word;
-  -webkit-hyphens: auto;
-  hyphens: auto;
-  /* GPU layer promotion */
-  transform: translateZ(0);
-  will-change: transform, opacity;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  overflow-wrap: anywhere;
+  -webkit-font-smoothing: antialiased;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
 }
-
 .react-toast:hover {
-  transform: translateZ(0) scale(1.015);
+  transform: translateY(-1px);
+  box-shadow:
+    0 18px 40px -12px rgba(15, 23, 42, 0.3),
+    0 4px 10px rgba(15, 23, 42, 0.08);
 }
-
-/* ─── Solid variant colours (light) ─────────────────────────────────────── */
-.react-toast[data-variant="success"] {
-  background-color: #10b981;
-  color: #ffffff;
-  box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.45), 0 4px 8px -2px rgba(16, 185, 129, 0.2);
+.react-toast:focus-visible {
+  outline: 2px solid var(--rtk-accent);
+  outline-offset: 3px;
 }
-
-.react-toast[data-variant="error"] {
-  background-color: #ef4444;
-  color: #ffffff;
-  box-shadow: 0 8px 24px -4px rgba(239, 68, 68, 0.45), 0 4px 8px -2px rgba(239, 68, 68, 0.2);
+.react-toast[data-theme='dark'] {
+  --rtk-surface: #111827;
+  --rtk-text: #f8fafc;
+  --rtk-muted: #a8b3c7;
+  --rtk-border: rgba(255, 255, 255, 0.11);
+  box-shadow:
+    0 18px 42px -14px rgba(0, 0, 0, 0.72),
+    inset 0 1px rgba(255, 255, 255, 0.035);
 }
-
-.react-toast[data-variant="warning"] {
-  background-color: #f59e0b;
-  color: #ffffff;
-  box-shadow: 0 8px 24px -4px rgba(245, 158, 11, 0.45), 0 4px 8px -2px rgba(245, 158, 11, 0.2);
+.react-toast[data-variant='success'] {
+  --rtk-accent: #059669;
+  --rtk-soft: rgba(5, 150, 105, 0.16);
 }
-
-.react-toast[data-variant="info"] {
-  background-color: #3b82f6;
-  color: #ffffff;
-  box-shadow: 0 8px 24px -4px rgba(59, 130, 246, 0.45), 0 4px 8px -2px rgba(59, 130, 246, 0.2);
+.react-toast[data-variant='error'] {
+  --rtk-accent: #e11d48;
+  --rtk-soft: rgba(225, 29, 72, 0.15);
 }
-
-.react-toast[data-variant="loading"] {
-  background-color: #6b7280;
-  color: #ffffff;
-  box-shadow: 0 8px 24px -4px rgba(107, 114, 128, 0.35), 0 4px 8px -2px rgba(107, 114, 128, 0.15);
+.react-toast[data-variant='warning'] {
+  --rtk-accent: #d97706;
+  --rtk-soft: rgba(217, 119, 6, 0.17);
 }
-
-.react-toast[data-variant="default"] {
-  background-color: #ffffff;
-  color: #1f2937;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.1), 0 4px 8px -2px rgba(0, 0, 0, 0.06);
+.react-toast[data-variant='info'] {
+  --rtk-accent: #2563eb;
+  --rtk-soft: rgba(37, 99, 235, 0.15);
 }
-
-/* Dark mode — solid */
-.react-toast[data-theme="dark"][data-variant="success"] {
-  background-color: #065f46;
-  color: #ffffff;
-  border: 1px solid #047857;
-  box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.3), 0 4px 8px -2px rgba(16, 185, 129, 0.12);
+.react-toast[data-variant='loading'] {
+  --rtk-accent: #7c3aed;
+  --rtk-soft: rgba(124, 58, 237, 0.16);
 }
-
-.react-toast[data-theme="dark"][data-variant="error"] {
-  background-color: #991b1b;
-  color: #ffffff;
-  border: 1px solid #b91c1c;
-  box-shadow: 0 8px 24px -4px rgba(239, 68, 68, 0.3), 0 4px 8px -2px rgba(239, 68, 68, 0.12);
+.react-toast[data-theme='dark'][data-variant='success'] {
+  --rtk-accent: #34d399;
 }
-
-.react-toast[data-theme="dark"][data-variant="warning"] {
-  background-color: #92400e;
-  color: #ffffff;
-  border: 1px solid #b45309;
-  box-shadow: 0 8px 24px -4px rgba(245, 158, 11, 0.3), 0 4px 8px -2px rgba(245, 158, 11, 0.12);
+.react-toast[data-theme='dark'][data-variant='error'] {
+  --rtk-accent: #fb7185;
 }
-
-.react-toast[data-theme="dark"][data-variant="info"] {
-  background-color: #1e40af;
-  color: #ffffff;
-  border: 1px solid #1d4ed8;
-  box-shadow: 0 8px 24px -4px rgba(59, 130, 246, 0.3), 0 4px 8px -2px rgba(59, 130, 246, 0.12);
+.react-toast[data-theme='dark'][data-variant='warning'] {
+  --rtk-accent: #fbbf24;
 }
-
-.react-toast[data-theme="dark"][data-variant="loading"] {
-  background-color: #374151;
-  color: #ffffff;
-  border: 1px solid #4b5563;
+.react-toast[data-theme='dark'][data-variant='info'] {
+  --rtk-accent: #60a5fa;
 }
-
-.react-toast[data-theme="dark"][data-variant="default"] {
-  background-color: #1f2937;
-  color: #f9fafb;
-  border: 1px solid #374151;
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4), 0 4px 8px -2px rgba(0, 0, 0, 0.2);
+.react-toast[data-theme='dark'][data-variant='loading'] {
+  --rtk-accent: #a78bfa;
 }
-
-/* ─── Gradient style ─────────────────────────────────────────────────────── */
-.react-toast[data-style="gradient"] {
-  background-image: linear-gradient(
+.react-toast[data-style='solid']:not([data-variant='default']):not([data-variant='custom']) {
+  background: linear-gradient(110deg, var(--rtk-soft), transparent 44%), var(--rtk-surface);
+  border-color: var(--rtk-accent);
+}
+.react-toast[data-style='solid']:not([data-variant='default']):not([data-variant='custom'])::before,
+.react-toast[data-style='minimal']::before {
+  content: '';
+  position: absolute;
+  inset-block: 12px;
+  inset-inline-start: 0;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: var(--rtk-accent);
+}
+[dir='rtl'] .react-toast[data-style='solid']::before,
+[dir='rtl'] .react-toast[data-style='minimal']::before {
+  border-radius: 4px 0 0 4px;
+}
+.react-toast[data-style='gradient'] {
+  background: linear-gradient(
     135deg,
-    var(--toast-gradient-from, rgba(59, 130, 246, 0.85)),
-    var(--toast-gradient-to, rgba(37, 99, 235, 0.9))
+    var(--toast-gradient-from, var(--rtk-accent)),
+    var(--toast-gradient-to, #6366f1)
   );
-  border: none;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
-
-/* ─── Glass style ────────────────────────────────────────────────────────── */
-.react-toast[data-style="glass"] {
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  color: #1f2937;
+.react-toast[data-style='gradient'] .toast-description {
+  color: rgba(255, 255, 255, 0.82);
 }
-
-.react-toast[data-theme="dark"][data-style="glass"] {
-  background: rgba(17, 24, 39, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  color: #f9fafb;
+.react-toast[data-style='glass'] {
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border-color: rgba(255, 255, 255, 0.72);
 }
-
-/* ─── Shimmer style ──────────────────────────────────────────────────────── */
-.react-toast[data-style="shimmer"] {
-  position: relative;
-  overflow: hidden;
+.react-toast[data-theme='dark'][data-style='glass'] {
+  background: rgba(17, 24, 39, 0.76);
+  border-color: rgba(255, 255, 255, 0.14);
 }
-
-.react-toast[data-style="shimmer"]::after {
+.react-toast[data-style='minimal'] {
+  box-shadow: 0 8px 22px -12px rgba(15, 23, 42, 0.25);
+  border-color: transparent;
+}
+.react-toast[data-style='outlined'] {
+  background: var(--rtk-soft);
+  border-color: var(--rtk-accent);
+  box-shadow: none;
+}
+.react-toast[data-style='outlined'] .toast-icon-container {
+  background: var(--rtk-surface);
+  border-color: var(--rtk-accent);
+}
+.react-toast[data-style='pill'] {
+  border-radius: 999px;
+  min-height: 58px;
+}
+.react-toast[data-style='retro'] {
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  box-shadow: 4px 4px 0 currentColor;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.react-toast[data-theme='dark'][data-style='retro'] {
+  box-shadow: 4px 4px 0 color-mix(in srgb, currentColor 65%, transparent);
+}
+.react-toast[data-style='neon'] {
+  background: #090d16;
+  color: var(--rtk-accent);
+  border-color: var(--rtk-accent);
+  box-shadow: 0 0 18px var(--rtk-soft);
+}
+.react-toast[data-style='gradient'] .toast-icon-container,
+.react-toast[data-style='neon'] .toast-icon-container {
+  color: currentColor;
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.react-toast[data-style='shimmer']::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.28) 50%, transparent 60%);
-  background-size: 200% 100%;
-  animation: shimmer 2.2s linear infinite;
   pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    color-mix(in srgb, var(--rtk-accent) 18%, transparent) 48%,
+    transparent 61%
+  );
+  transform: translateX(-120%);
+  animation: rtk-shimmer 2.4s ease-in-out infinite;
 }
-
-@keyframes shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+.react-toast[data-style='confetti'] {
+  background-image:
+    radial-gradient(circle at 12% 25%, #f43f5e 0 2px, transparent 3px),
+    radial-gradient(circle at 88% 72%, #3b82f6 0 2px, transparent 3px),
+    radial-gradient(circle at 75% 15%, #f59e0b 0 2px, transparent 3px),
+    radial-gradient(circle at 22% 82%, #10b981 0 2px, transparent 3px);
 }
-
-/* ─── Pill style ─────────────────────────────────────────────────────────── */
-.react-toast[data-style="pill"] {
-  border-radius: 9999px;
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
+.react-toast[data-theme='dark'][data-style='confetti'] {
+  background-color: var(--rtk-surface);
 }
-
-/* ─── Neon style ─────────────────────────────────────────────────────────── */
-.react-toast[data-style="neon"][data-variant="success"] {
-  background-color: #022c22;
-  color: #34d399;
-  border: 1px solid #10b981;
-  animation: neon-pulse-green 2s ease-in-out infinite;
+.react-toast[data-style='pill'] .react-toast-progress {
+  inset-inline: 24px 52px;
 }
-
-.react-toast[data-style="neon"][data-variant="error"] {
-  background-color: #2d0a0a;
-  color: #f87171;
-  border: 1px solid #ef4444;
-  animation: neon-pulse-red 2s ease-in-out infinite;
+@keyframes rtk-shimmer {
+  55%,
+  100% {
+    transform: translateX(120%);
+  }
 }
-
-.react-toast[data-style="neon"][data-variant="warning"] {
-  background-color: #2d1a00;
-  color: #fbbf24;
-  border: 1px solid #f59e0b;
-  animation: neon-pulse-amber 2s ease-in-out infinite;
-}
-
-.react-toast[data-style="neon"][data-variant="info"] {
-  background-color: #0a1628;
-  color: #60a5fa;
-  border: 1px solid #3b82f6;
-  animation: neon-pulse-blue 2s ease-in-out infinite;
-}
-
-.react-toast[data-style="neon"][data-variant="loading"],
-.react-toast[data-style="neon"][data-variant="default"] {
-  background-color: #0f1117;
-  color: #a78bfa;
-  border: 1px solid #7c3aed;
-  animation: neon-pulse-violet 2s ease-in-out infinite;
-}
-
-@keyframes neon-pulse-green {
-  0%, 100% { box-shadow: 0 0 6px rgba(16, 185, 129, 0.5), 0 0 18px rgba(16, 185, 129, 0.25); }
-  50%       { box-shadow: 0 0 14px rgba(16, 185, 129, 0.8), 0 0 36px rgba(16, 185, 129, 0.4); }
-}
-
-@keyframes neon-pulse-red {
-  0%, 100% { box-shadow: 0 0 6px rgba(239, 68, 68, 0.5), 0 0 18px rgba(239, 68, 68, 0.25); }
-  50%       { box-shadow: 0 0 14px rgba(239, 68, 68, 0.8), 0 0 36px rgba(239, 68, 68, 0.4); }
-}
-
-@keyframes neon-pulse-amber {
-  0%, 100% { box-shadow: 0 0 6px rgba(245, 158, 11, 0.5), 0 0 18px rgba(245, 158, 11, 0.25); }
-  50%       { box-shadow: 0 0 14px rgba(245, 158, 11, 0.8), 0 0 36px rgba(245, 158, 11, 0.4); }
-}
-
-@keyframes neon-pulse-blue {
-  0%, 100% { box-shadow: 0 0 6px rgba(59, 130, 246, 0.5), 0 0 18px rgba(59, 130, 246, 0.25); }
-  50%       { box-shadow: 0 0 14px rgba(59, 130, 246, 0.8), 0 0 36px rgba(59, 130, 246, 0.4); }
-}
-
-@keyframes neon-pulse-violet {
-  0%, 100% { box-shadow: 0 0 6px rgba(124, 58, 237, 0.5), 0 0 18px rgba(124, 58, 237, 0.25); }
-  50%       { box-shadow: 0 0 14px rgba(124, 58, 237, 0.8), 0 0 36px rgba(124, 58, 237, 0.4); }
-}
-
-/* ─── Retro style ────────────────────────────────────────────────────────── */
-.react-toast[data-style="retro"] {
-  border: 2px solid #000;
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.9);
-  border-radius: 4px;
-  font-family: "Courier New", Courier, monospace;
-}
-
-.react-toast[data-theme="dark"][data-style="retro"] {
-  border: 2px solid #fff;
-  box-shadow: 4px 4px 0 rgba(255, 255, 255, 0.7);
-}
-
-/* ─── Confetti style ─────────────────────────────────────────────────────── */
-.react-toast[data-style="confetti"] {
-  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='rgba(255,255,255,.1)' fill-rule='evenodd'/%3E%3C/svg%3E");
-}
-
-/* ─── Minimal style ──────────────────────────────────────────────────────── */
-.react-toast[data-style="minimal"] {
-  background-color: #ffffff;
-  color: #1f2937;
-  border: 1px solid #f3f4f6;
-  border-left: 4px solid #e5e7eb;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.react-toast[data-theme="dark"][data-style="minimal"] {
-  background-color: #111827;
-  color: #f9fafb;
-  border: 1px solid #1f2937;
-  border-left: 4px solid #374151;
-}
-
-.react-toast[data-style="minimal"][data-variant="success"] { border-left-color: #10b981; }
-.react-toast[data-style="minimal"][data-variant="error"]   { border-left-color: #ef4444; }
-.react-toast[data-style="minimal"][data-variant="warning"] { border-left-color: #f59e0b; }
-.react-toast[data-style="minimal"][data-variant="info"]    { border-left-color: #3b82f6; }
-.react-toast[data-style="minimal"][data-variant="loading"] { border-left-color: #6b7280; }
-
-.react-toast[data-style="minimal"] .toast-icon-container {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.react-toast[data-style="minimal"][data-variant="success"] .toast-icon-container {
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
-}
-
-.react-toast[data-style="minimal"][data-variant="error"] .toast-icon-container {
-  background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
-}
-
-.react-toast[data-style="minimal"][data-variant="warning"] .toast-icon-container {
-  background: rgba(245, 158, 11, 0.12);
-  color: #d97706;
-}
-
-.react-toast[data-style="minimal"][data-variant="info"] .toast-icon-container {
-  background: rgba(59, 130, 246, 0.12);
-  color: #2563eb;
-}
-
-.react-toast[data-style="minimal"][data-variant="loading"] .toast-icon-container {
-  background: rgba(107, 114, 128, 0.12);
-  color: #4b5563;
-}
-
-/* ─── Outlined style ─────────────────────────────────────────────────────── */
-.react-toast[data-style="outlined"] {
-  background-color: transparent;
-  border: 2px solid currentColor;
-  box-shadow: none;
-}
-
-.react-toast[data-style="outlined"][data-variant="success"] {
-  color: #059669;
-  border-color: #10b981;
-  background: rgba(16, 185, 129, 0.04);
-}
-
-.react-toast[data-style="outlined"][data-variant="error"] {
-  color: #dc2626;
-  border-color: #ef4444;
-  background: rgba(239, 68, 68, 0.04);
-}
-
-.react-toast[data-style="outlined"][data-variant="warning"] {
-  color: #d97706;
-  border-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.04);
-}
-
-.react-toast[data-style="outlined"][data-variant="info"] {
-  color: #2563eb;
-  border-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.04);
-}
-
-.react-toast[data-style="outlined"][data-variant="loading"],
-.react-toast[data-style="outlined"][data-variant="default"] {
-  color: #4b5563;
-  border-color: #9ca3af;
-  background: rgba(107, 114, 128, 0.04);
-}
-
-.react-toast[data-theme="dark"][data-style="outlined"][data-variant="success"] {
-  color: #34d399;
-  border-color: #10b981;
-  background: rgba(16, 185, 129, 0.08);
-}
-
-.react-toast[data-theme="dark"][data-style="outlined"][data-variant="error"] {
-  color: #f87171;
-  border-color: #ef4444;
-  background: rgba(239, 68, 68, 0.08);
-}
-
-.react-toast[data-theme="dark"][data-style="outlined"][data-variant="warning"] {
-  color: #fbbf24;
-  border-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.08);
-}
-
-.react-toast[data-theme="dark"][data-style="outlined"][data-variant="info"] {
-  color: #60a5fa;
-  border-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.08);
-}
-
-.react-toast[data-theme="dark"][data-style="outlined"][data-variant="loading"],
-.react-toast[data-theme="dark"][data-style="outlined"][data-variant="default"] {
-  color: #9ca3af;
-  border-color: #4b5563;
-  background: rgba(107, 114, 128, 0.08);
-}
-
-/* ─── Toast content ──────────────────────────────────────────────────────── */
 .toast-content {
   display: flex;
   flex-direction: column;
-  padding: 0.875rem 1rem;
+  padding: 14px 44px 14px 16px;
 }
-
+.react-toast[data-progress-position='bottom'] .toast-content {
+  padding-block-end: 24px;
+}
+.react-toast[data-progress-position='top'] .toast-content {
+  padding-block-start: 24px;
+}
+.react-toast[data-progress-position='left'] .toast-content {
+  padding-inline-start: 24px;
+}
+.react-toast[data-progress-position='right'] .toast-content {
+  padding-inline-end: 52px;
+}
+[dir='rtl'] .toast-content {
+  padding: 14px 16px 14px 44px;
+}
+[dir='rtl'] .react-toast[data-progress-position='bottom'] .toast-content {
+  padding-block-end: 24px;
+}
+[dir='rtl'] .react-toast[data-progress-position='top'] .toast-content {
+  padding-block-start: 24px;
+}
+[dir='rtl'] .react-toast[data-progress-position='left'] .toast-content {
+  padding-inline-start: 24px;
+}
+[dir='rtl'] .react-toast[data-progress-position='right'] .toast-content {
+  padding-inline-end: 52px;
+}
+.toast-content > .flex {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+}
+.toast-content .flex-1 {
+  flex: 1;
+  min-width: 0;
+}
 .react-toast h4 {
   margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  line-height: 1.4;
+  font-size: 0.925rem;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
 }
-
 .toast-description {
-  margin-top: 0.2rem;
-  font-size: 0.8125rem;
+  margin-block-start: 3px;
+  color: var(--rtk-muted);
+  font-size: 0.825rem;
   line-height: 1.5;
-  opacity: 0.85;
 }
-
-/* ─── Icon container ─────────────────────────────────────────────────────── */
-.toast-icon-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-right: 0.75rem;
-  width: 1.5rem;
-  height: 1.5rem;
-}
-
-.toast-icon-animated {
-  animation: toast-icon-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-@keyframes toast-icon-pop {
-  0%   { transform: scale(0); opacity: 0; }
-  70%  { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-/* Loading spinner via pseudo-element */
-.react-toast[data-variant="loading"] .toast-icon-container {
-  position: relative;
-}
-
-.react-toast[data-variant="loading"] .toast-icon-container svg {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-/* Emoji */
+.toast-icon-container,
 .toast-emoji {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
-  flex-shrink: 0;
-  font-size: 1.25rem;
-  margin-right: 0.625rem;
-  line-height: 1;
+  justify-content: center;
+  margin-inline-end: 11px;
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--rtk-accent) 22%, transparent);
+  border-radius: 10px;
+  background: var(--rtk-soft);
+  color: var(--rtk-accent);
 }
-
-/* ─── Action buttons ─────────────────────────────────────────────────────── */
+.toast-icon-container svg {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.08));
+}
+.toast-emoji {
+  background: transparent;
+  font-size: 1.25rem;
+}
+.toast-icon-animated {
+  animation: rtk-icon 0.38s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+@keyframes rtk-icon {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.react-toast[data-variant='loading'] .toast-icon-container svg {
+  animation: rtk-spin 0.85s linear infinite;
+}
+@keyframes rtk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .toast-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.375rem;
-  margin-top: 0.625rem;
+  gap: 6px;
+  margin-block-start: 10px;
 }
-
 .toast-action-btn {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.5;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: background 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
-  background: rgba(255, 255, 255, 0.2);
+  min-height: 30px;
+  padding: 4px 10px;
+  border: 1px solid var(--rtk-border);
+  border-radius: 8px;
+  background: var(--rtk-soft);
   color: inherit;
+  font: 600 0.78rem/1.2 inherit;
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    background 0.14s ease;
 }
-
 .toast-action-btn:hover {
-  background: rgba(255, 255, 255, 0.32);
+  background: var(--rtk-soft);
   transform: translateY(-1px);
 }
-
-.toast-action-btn:active { transform: translateY(0); }
-
-.toast-action-btn[data-variant="secondary"] {
-  background: rgba(0, 0, 0, 0.08);
-  color: inherit;
+.toast-action-btn:active {
+  transform: none;
 }
-
-.toast-action-btn[data-variant="secondary"]:hover {
-  background: rgba(0, 0, 0, 0.16);
+.toast-action-btn:focus-visible {
+  outline: 2px solid var(--rtk-accent);
+  outline-offset: 2px;
 }
-
-.toast-action-btn[data-variant="danger"] {
-  background: rgba(239, 68, 68, 0.18);
-  color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.35);
+.toast-action-btn[data-variant='secondary'] {
+  background: transparent;
 }
-
-.toast-action-btn[data-variant="danger"]:hover {
-  background: rgba(239, 68, 68, 0.3);
+.toast-action-btn[data-variant='danger'] {
+  color: #e11d48;
 }
-
-/* Dark-safe action buttons on minimal/outlined */
-.react-toast[data-style="minimal"] .toast-action-btn,
-.react-toast[data-style="outlined"] .toast-action-btn {
-  background: rgba(0, 0, 0, 0.06);
-  color: inherit;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-}
-
-.react-toast[data-style="minimal"] .toast-action-btn:hover,
-.react-toast[data-style="outlined"] .toast-action-btn:hover {
-  background: rgba(0, 0, 0, 0.12);
-}
-
-.react-toast[data-theme="dark"][data-style="minimal"] .toast-action-btn,
-.react-toast[data-theme="dark"][data-style="outlined"] .toast-action-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.16);
-}
-
-.react-toast[data-theme="dark"][data-style="minimal"] .toast-action-btn:hover,
-.react-toast[data-theme="dark"][data-style="outlined"] .toast-action-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-/* ─── Close button ───────────────────────────────────────────────────────── */
 .react-toast-close {
   position: absolute;
-  top: 0.625rem;
-  right: 0.625rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.0);
-  color: currentColor;
-  opacity: 0.45;
-  cursor: pointer;
-  transition: opacity 0.18s ease, background 0.18s ease, transform 0.12s ease;
-  flex-shrink: 0;
+  inset-block-start: 10px;
+  inset-inline-end: 10px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
   padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: currentColor;
+  opacity: 0.48;
+  cursor: pointer;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
 }
-
+.react-toast-close svg {
+  width: 16px;
+  height: 16px;
+}
 .react-toast-close:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.1);
+  background: var(--rtk-soft);
+  transform: scale(1.04);
 }
-
-.react-toast[data-style="minimal"] .react-toast-close:hover,
-.react-toast[data-style="outlined"] .react-toast-close:hover {
-  background: rgba(0, 0, 0, 0.08);
+.react-toast-close:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--rtk-accent);
+  outline-offset: 1px;
 }
-
-.react-toast[data-theme="dark"][data-style="minimal"] .react-toast-close:hover,
-.react-toast[data-theme="dark"][data-style="outlined"] .react-toast-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-/* ─── Progress bar ───────────────────────────────────────────────────────── */
 .react-toast-progress {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  overflow: hidden;
+  z-index: 2;
+  inset-inline: 16px 44px;
+  inset-block-end: 8px;
+  height: var(--rtk-progress-size, 5px);
+  overflow: visible;
+  padding: 1px;
+  border: 1px solid color-mix(in srgb, var(--rtk-accent) 15%, var(--rtk-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rtk-soft) 62%, var(--rtk-surface));
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
 }
-
-.react-toast[data-progress-position="top"] .react-toast-progress {
-  top: 0;
-  bottom: auto;
+.react-toast[data-progress-position='top'] .react-toast-progress {
+  inset-block: 8px auto;
 }
-
-.react-toast[data-progress-position="left"] .react-toast-progress {
-  top: 0;
-  bottom: 0;
-  right: auto;
-  width: 3px;
-  height: 100%;
+.react-toast[data-progress-position='left'] .react-toast-progress,
+.react-toast[data-progress-position='right'] .react-toast-progress {
+  inset-block: 12px;
+  width: var(--rtk-progress-size, 5px);
+  height: auto;
 }
-
-.react-toast[data-progress-position="right"] .react-toast-progress {
-  top: 0;
-  bottom: 0;
-  left: auto;
-  width: 3px;
-  height: 100%;
+.react-toast[data-progress-position='left'] .react-toast-progress {
+  inset-inline: 8px auto;
 }
-
+.react-toast[data-progress-position='right'] .react-toast-progress {
+  inset-inline: auto 8px;
+}
 .react-toast-progress-fill {
-  height: 100%;
+  position: relative;
   width: 100%;
+  height: 100%;
+  overflow: visible;
+  border-radius: inherit;
+  background: var(--rtk-progress-color, var(--rtk-accent));
+  animation: rtk-progress linear forwards;
   will-change: transform;
-  transform-origin: left center;
-  background: rgba(255, 255, 255, 0.5);
 }
-
-/* Variant-matched progress fill for minimal & outlined */
-.react-toast[data-style="minimal"][data-variant="success"] .react-toast-progress-fill,
-.react-toast[data-style="outlined"][data-variant="success"] .react-toast-progress-fill {
-  background: #10b981;
+.react-toast-progress-orb {
+  --rtk-orb-transform: translateY(-50%);
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: -2px;
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--rtk-surface);
+  border-radius: 50%;
+  background: var(--rtk-progress-color, var(--rtk-accent));
+  box-shadow: 0 0 0 2px var(--rtk-soft);
+  transform: var(--rtk-orb-transform);
+  animation: rtk-progress-orb linear forwards;
 }
-
-.react-toast[data-style="minimal"][data-variant="error"] .react-toast-progress-fill,
-.react-toast[data-style="outlined"][data-variant="error"] .react-toast-progress-fill {
-  background: #ef4444;
+.react-toast[data-progress-position='left'] .react-toast-progress-orb,
+.react-toast[data-progress-position='right'] .react-toast-progress-orb {
+  --rtk-orb-transform: translateX(-50%);
+  inset-block: auto -2px;
+  inset-inline-start: 50%;
+  transform: var(--rtk-orb-transform);
+  animation-name: rtk-progress-orb-vertical;
 }
-
-.react-toast[data-style="minimal"][data-variant="warning"] .react-toast-progress-fill,
-.react-toast[data-style="outlined"][data-variant="warning"] .react-toast-progress-fill {
-  background: #f59e0b;
+@keyframes rtk-progress {
+  to {
+    transform: var(--toast-progress-axis, scaleX(0));
+  }
 }
-
-.react-toast[data-style="minimal"][data-variant="info"] .react-toast-progress-fill,
-.react-toast[data-style="outlined"][data-variant="info"] .react-toast-progress-fill {
-  background: #3b82f6;
+@keyframes rtk-progress-orb {
+  to {
+    inset-inline-end: calc(100% - 5px);
+  }
 }
-
-.react-toast[data-style="minimal"][data-variant="default"] .react-toast-progress-fill,
-.react-toast[data-style="outlined"][data-variant="default"] .react-toast-progress-fill {
-  background: #9ca3af;
+@keyframes rtk-progress-orb-vertical {
+  to {
+    inset-block-end: calc(100% - 5px);
+  }
 }
-
-/* Vertical progress — override transform-origin */
-.react-toast[data-progress-position="left"] .react-toast-progress-fill,
-.react-toast[data-progress-position="right"] .react-toast-progress-fill {
-  transform-origin: top center;
+.react-toast-progress.fancy .react-toast-progress-fill {
+  background: linear-gradient(
+    90deg,
+    var(--rtk-accent),
+    color-mix(in srgb, var(--rtk-accent) 45%, white),
+    var(--rtk-accent)
+  );
+  background-size: 250% 100%;
 }
-
-/* Enhanced progress styles */
-.react-toast-progress.fancy {
-  background: linear-gradient(to right, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.18));
-  backdrop-filter: blur(4px);
-}
-
 .react-toast-progress.gradient-wave .react-toast-progress-fill {
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #3b82f6);
-  background-size: 300% 100%;
-  animation: gradient-wave 2s linear infinite;
+  background: linear-gradient(90deg, #2563eb, #7c3aed, #db2777);
 }
-
-@keyframes gradient-wave {
-  0%   { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
-}
-
-.react-toast-progress.pulse .react-toast-progress-fill {
-  animation: progress-pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes progress-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.5; }
-}
-
-.react-toast-progress.three-d .react-toast-progress-fill {
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
-}
-
-.react-toast-progress.glow .react-toast-progress-fill {
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
-}
-
 .react-toast-progress.rainbow .react-toast-progress-fill {
-  background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
-  background-size: 700% 100%;
-  animation: rainbow 4s linear infinite;
+  background: linear-gradient(90deg, #e11d48, #d97706, #059669, #2563eb, #7c3aed);
 }
-
-@keyframes rainbow {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+.react-toast-progress.pulse .react-toast-progress-orb {
+  box-shadow:
+    0 0 0 3px var(--rtk-soft),
+    0 0 10px var(--rtk-accent);
 }
-
+.react-toast-progress.particles .react-toast-progress-fill {
+  background-image: radial-gradient(circle, #fff 0 1px, transparent 1.5px);
+  background-color: var(--rtk-accent);
+  background-size: 5px 5px;
+}
+.react-toast-progress.liquid .react-toast-progress-fill {
+  background: linear-gradient(
+    90deg,
+    var(--rtk-accent),
+    color-mix(in srgb, var(--rtk-accent) 55%, white)
+  );
+  filter: saturate(1.2);
+}
+.react-toast-progress.three-d .react-toast-progress-fill {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--rtk-accent) 45%, white),
+    var(--rtk-accent)
+  );
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.55),
+    0 1px 2px rgba(15, 23, 42, 0.25);
+}
 .react-toast-progress.dashed .react-toast-progress-fill {
-  background-image: linear-gradient(to right, currentColor 50%, transparent 50%);
-  background-size: 20px 100%;
+  background: repeating-linear-gradient(90deg, var(--rtk-accent) 0 8px, transparent 8px 12px);
 }
-
-/* ─── Ripple ─────────────────────────────────────────────────────────────── */
-.toast-ripple { position: relative; overflow: hidden; }
-
+.react-toast-progress.glow .react-toast-progress-fill {
+  box-shadow: 0 0 8px var(--rtk-accent);
+}
+.react-toast-progress.data-flow .react-toast-progress-fill {
+  background: repeating-linear-gradient(
+    115deg,
+    var(--rtk-accent) 0 6px,
+    color-mix(in srgb, var(--rtk-accent) 45%, transparent) 6px 11px
+  );
+}
+.react-toast-progress.step-progress .react-toast-progress-fill {
+  background: repeating-linear-gradient(90deg, var(--rtk-accent) 0 13%, transparent 13% 16%);
+}
 .toast-ripple-element {
   position: absolute;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.3);
   width: 100px;
   height: 100px;
-  margin-top: -50px;
-  margin-left: -50px;
-  animation: ripple 0.7s linear;
-  transform: scale(0);
-  opacity: 0.5;
+  margin: -50px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.16;
   pointer-events: none;
+  animation: rtk-ripple 0.65s ease-out both;
 }
-
-@keyframes ripple {
-  to { transform: scale(4); opacity: 0; }
+@keyframes rtk-ripple {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
 }
-
-/* ─── Floating ───────────────────────────────────────────────────────────── */
 .react-toast-floating {
-  animation: float 3s ease-in-out infinite;
+  animation: rtk-float 3s ease-in-out infinite;
 }
-
-@keyframes float {
-  0%, 100% { transform: translateZ(0) translateY(0); }
-  50%       { transform: translateZ(0) translateY(-5px); }
+@keyframes rtk-float {
+  50% {
+    transform: translateY(-4px);
+  }
 }
-
-/* ─── Soft shadow helper ─────────────────────────────────────────────────── */
-.toast-soft-shadow {
-  box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.18), 0 4px 12px -4px rgba(0, 0, 0, 0.1);
-}
-
-/* ─── Accessibility ──────────────────────────────────────────────────────── */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -733,46 +679,52 @@
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-  border-width: 0;
+  border: 0;
 }
-
-/* ─── Reduced motion ─────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .react-toast-container {
+    width: calc(100vw - 24px) !important;
+    max-width: none;
+  }
+  .react-toast-item {
+    max-width: none;
+  }
+  .react-toast {
+    font-size: 0.9rem;
+  }
+  .toast-content {
+    padding-block: 13px;
+  }
+  .react-toast-close {
+    width: 32px;
+    height: 32px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
+  .react-toast-item,
   .react-toast,
   .react-toast::after,
   .react-toast-floating,
   .toast-icon-animated,
-  .react-toast[data-style="neon"] {
+  .react-toast-progress-fill,
+  .react-toast-progress-orb {
     animation: none !important;
     transition: none !important;
   }
-
   .react-toast:hover {
-    transform: translateZ(0) !important;
-  }
-
-  .react-toast-progress-fill {
-    transition: none !important;
+    transform: none;
   }
 }
-
-/* ─── Mobile ─────────────────────────────────────────────────────────────── */
-@media (max-width: 640px) {
-  .react-toast-container {
-    width: calc(100% - 2rem);
-    max-width: 100%;
-  }
-
-  .react-toast-item {
-    width: 100%;
-  }
-
+@media (forced-colors: active) {
   .react-toast {
-    font-size: 0.875rem;
+    border: 1px solid CanvasText;
   }
-
-  .react-toast-close {
-    width: 2rem;
-    height: 2rem;
+  .toast-icon-container,
+  .toast-action-btn {
+    border: 1px solid ButtonText;
+  }
+  .react-toast-progress-fill,
+  .react-toast-progress-orb {
+    background: Highlight;
   }
 }

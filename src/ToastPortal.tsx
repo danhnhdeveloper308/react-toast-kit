@@ -1,11 +1,27 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { useToastStore } from './toast';
-import { AnimatePresence, motion, useAnimation } from 'framer-motion';
 import type { Toast, ToastPosition, ToastAnimation, ToastStyle, ToastAction } from './toast';
-import type { TargetAndTransition } from 'framer-motion';
 
 const { useEffect, useState, memo, useRef, useCallback, useMemo } = React;
+
+type ToastCSSProperties = React.CSSProperties & Record<`--${string}`, string | number | undefined>;
+
+const toNativeKeyframe = (value: Record<string, unknown>): Keyframe => {
+  const { x, y, scale, rotate, rotateX, rotateY, ...native } = value;
+  const transforms: string[] = [];
+  if (x !== undefined || y !== undefined) {
+    transforms.push(`translate3d(${x ?? 0}px, ${y ?? 0}px, 0)`);
+  }
+  if (scale !== undefined) transforms.push(`scale(${scale})`);
+  if (rotate !== undefined) transforms.push(`rotate(${rotate}deg)`);
+  if (rotateX !== undefined) transforms.push(`rotateX(${rotateX}deg)`);
+  if (rotateY !== undefined) transforms.push(`rotateY(${rotateY}deg)`);
+  return {
+    ...native,
+    ...(transforms.length ? { transform: transforms.join(' ') } : {}),
+  } as Keyframe;
+};
 
 // Scans DOM for the highest in-use z-index so the portal sits on top.
 // Result is cached for 5 seconds to avoid repeated DOM walks.
@@ -65,7 +81,10 @@ const AccessibilityAnnouncer = memo(({ toasts }: { toasts: Toast[] }) => {
 
   useEffect(() => {
     if (toasts.length === 0) return;
-    const latest = toasts[0];
+    const latest = [...toasts]
+      .filter((toast) => !toast.exiting)
+      .sort((a, b) => b.createdAt - a.createdAt)[0];
+    if (!latest) return;
     if (latest.id === lastIdRef.current) return;
 
     let text = latest.variant ? `${latest.variant} notification: ` : '';
@@ -82,7 +101,16 @@ const AccessibilityAnnouncer = memo(({ toasts }: { toasts: Toast[] }) => {
 
   if (!announcement) return null;
   return (
-    <div aria-live="polite" aria-atomic="true" className="sr-only" role="status">
+    <div
+      aria-live={
+        toasts.some((toast) => toast.variant === 'error' && !toast.exiting) ? 'assertive' : 'polite'
+      }
+      aria-atomic="true"
+      className="sr-only"
+      role={
+        toasts.some((toast) => toast.variant === 'error' && !toast.exiting) ? 'alert' : 'status'
+      }
+    >
       {announcement}
     </div>
   );
@@ -134,389 +162,350 @@ const useSwipeGesture = (enabled: boolean, onSwipe: () => void, threshold = 100)
 // ─── ProgressBar ─────────────────────────────────────────────────────────────
 
 // Separate component that owns the animation so it can pause/resume cleanly.
-const ProgressBar = memo(({
-  duration,
-  isPaused,
-  progressBarStyle,
-  progressBarColor,
-  progressBarThickness,
-  progressBarPosition,
-  progressAnimation,
-}: {
-  duration: number;
-  isPaused: boolean;
-  progressBarStyle?: string;
-  progressBarColor?: string;
-  progressBarThickness?: number;
-  progressBarPosition?: string;
-  progressAnimation?: string;
-}) => {
-  const controls = useAnimation();
-  const totalPausedMsRef = useRef(0);
-  const pauseStartRef = useRef<number | null>(null);
-  const animStartRef = useRef(Date.now());
-  const ease = (progressAnimation || 'linear') as string;
+const ProgressBar = memo(
+  ({
+    duration,
+    isPaused,
+    progressBarStyle,
+    progressBarColor,
+    progressBarThickness,
+    progressBarPosition,
+    progressAnimation,
+  }: {
+    duration: number;
+    isPaused: boolean;
+    progressBarStyle?: string;
+    progressBarColor?: string;
+    progressBarThickness?: number;
+    progressBarPosition?: string;
+    progressAnimation?: string;
+  }) => {
+    const isVertical = progressBarPosition === 'left' || progressBarPosition === 'right';
 
-  const isVertical = progressBarPosition === 'left' || progressBarPosition === 'right';
+    const baseClass = `react-toast-progress${progressBarStyle ? ` ${progressBarStyle}` : ''}`;
 
-  // Start animation once on mount — scaleX/scaleY is GPU-accelerated (no layout reflow)
-  useEffect(() => {
-    animStartRef.current = Date.now();
-    if (isVertical) {
-      controls.start({ scaleY: 0, transition: { duration: duration / 1000, ease } });
-    } else {
-      controls.start({ scaleX: 0, transition: { duration: duration / 1000, ease } });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Pause / resume the animation whenever the toast is hovered
-  useEffect(() => {
-    if (isPaused) {
-      controls.stop();
-      pauseStartRef.current = Date.now();
-    } else if (pauseStartRef.current !== null) {
-      totalPausedMsRef.current += Date.now() - pauseStartRef.current;
-      pauseStartRef.current = null;
-      const activeMs = Date.now() - animStartRef.current - totalPausedMsRef.current;
-      const remaining = Math.max(0, duration / 1000 - activeMs / 1000);
-      if (isVertical) {
-        controls.start({ scaleY: 0, transition: { duration: remaining, ease: 'linear' } });
-      } else {
-        controls.start({ scaleX: 0, transition: { duration: remaining, ease: 'linear' } });
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPaused]);
-
-  const baseClass = `react-toast-progress${progressBarStyle ? ` ${progressBarStyle}` : ''}`;
-
-  return (
-    <div className={baseClass}>
-      <motion.div
-        animate={controls}
-        initial={isVertical ? { scaleY: 1 } : { scaleX: 1 }}
-        className="react-toast-progress-fill"
-        style={{
-          backgroundColor: progressBarColor || undefined,
-          transformOrigin: isVertical ? 'top center' : 'left center',
-          ...(isVertical
-            ? { width: progressBarThickness ? `${progressBarThickness}px` : undefined }
-            : { height: progressBarThickness ? `${progressBarThickness}px` : undefined }),
-        }}
-      />
-    </div>
-  );
-});
+    return (
+      <div
+        className={baseClass}
+        style={
+          {
+            '--rtk-progress-size': progressBarThickness
+              ? `${Math.max(3, progressBarThickness)}px`
+              : undefined,
+            '--rtk-progress-color': progressBarColor || undefined,
+          } as ToastCSSProperties
+        }
+      >
+        <div
+          className="react-toast-progress-fill"
+          style={
+            {
+              backgroundColor: progressBarColor || undefined,
+              transformOrigin: isVertical ? 'top center' : 'left center',
+              animationDuration: `${duration}ms`,
+              animationTimingFunction:
+                progressAnimation === 'spring' ? 'cubic-bezier(.2,.8,.2,1)' : progressAnimation,
+              animationPlayState: isPaused ? 'paused' : 'running',
+              '--toast-progress-axis': isVertical ? 'scaleY(0)' : 'scaleX(0)',
+            } as ToastCSSProperties
+          }
+        />
+        <span
+          className="react-toast-progress-orb"
+          style={{
+            animationDuration: `${duration}ms`,
+            animationTimingFunction:
+              progressAnimation === 'spring' ? 'cubic-bezier(.2,.8,.2,1)' : progressAnimation,
+            animationPlayState: isPaused ? 'paused' : 'running',
+          }}
+        />
+      </div>
+    );
+  }
+);
 ProgressBar.displayName = 'ProgressBar';
 
 // ─── ToastItem ───────────────────────────────────────────────────────────────
 
-const ToastItem = memo(({
-  toast,
-  onDismiss,
-  onPause,
-  onResume,
-  animation,
-  position,
-  toastTheme,
-  defaultStyle,
-}: {
-  toast: Toast;
-  onDismiss: (id: string) => void;
-  onPause: (id: string) => void;
-  onResume: (id: string) => void;
-  animation: ToastAnimation;
-  position: ToastPosition;
-  toastTheme: 'light' | 'dark';
-  defaultStyle: ToastStyle;
-}) => {
-  const toastRef = useRef<HTMLDivElement>(null);
+const ToastItem = memo(
+  ({
+    toast,
+    onDismiss,
+    onPause,
+    onResume,
+    animation,
+    position,
+    toastTheme,
+    defaultStyle,
+  }: {
+    toast: Toast;
+    onDismiss: (id: string) => void;
+    onPause: (id: string) => void;
+    onResume: (id: string) => void;
+    animation: ToastAnimation;
+    position: ToastPosition;
+    toastTheme: 'light' | 'dark';
+    defaultStyle: ToastStyle;
+  }) => {
+    const toastRef = useRef<HTMLDivElement>(null);
 
-  // Subscribe only to this toast's pause state to avoid re-rendering all items
-  const isPaused = useToastStore((state) => state.pausedToasts.has(toast.id));
+    useEffect(() => {
+      if (!toast.customAnimation || !toastRef.current || toast.exiting) return;
+      const transition = toast.customAnimation.transition || {};
+      const duration = Number(transition.duration);
+      const animation = toastRef.current.animate(
+        [
+          toNativeKeyframe(toast.customAnimation.initial),
+          toNativeKeyframe(toast.customAnimation.animate),
+        ],
+        {
+          duration: Number.isFinite(duration) ? duration * 1000 : 320,
+          easing:
+            typeof transition.ease === 'string' ? transition.ease : 'cubic-bezier(.2,.8,.2,1)',
+          fill: 'both',
+        }
+      );
+      return () => animation.cancel();
+    }, [toast.customAnimation, toast.exiting]);
 
-  const handleDismiss = useCallback(() => onDismiss(toast.id), [onDismiss, toast.id]);
+    useEffect(() => {
+      if (!toast.customAnimation || !toastRef.current || !toast.exiting) return;
+      const transition = toast.customAnimation.transition || {};
+      const duration = Number(transition.duration);
+      toastRef.current.animate(
+        [
+          toNativeKeyframe(toast.customAnimation.animate),
+          toNativeKeyframe(toast.customAnimation.exit),
+        ],
+        {
+          duration: Number.isFinite(duration) ? duration * 1000 : 220,
+          easing: typeof transition.ease === 'string' ? transition.ease : 'ease-in',
+          fill: 'forwards',
+        }
+      );
+    }, [toast.customAnimation, toast.exiting]);
 
-  const handlePause = useCallback(() => {
-    if (toast.pauseOnHover) onPause(toast.id);
-  }, [onPause, toast.id, toast.pauseOnHover]);
+    // Subscribe only to this toast's pause state to avoid re-rendering all items
+    const isPaused = useToastStore((state) => state.pausedToasts.has(toast.id));
 
-  const handleResume = useCallback(() => onResume(toast.id), [onResume, toast.id]);
+    const handleDismiss = useCallback(() => onDismiss(toast.id), [onDismiss, toast.id]);
 
-  const handleRippleEffect = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (toast.rippleEffect && toastRef.current) {
-        const rect = toastRef.current.getBoundingClientRect();
-        const ripple = document.createElement('div');
-        ripple.className = 'toast-ripple-element';
-        ripple.style.left = `${e.clientX - rect.left}px`;
-        ripple.style.top = `${e.clientY - rect.top}px`;
-        toastRef.current.appendChild(ripple);
-        setTimeout(() => {
-          if (toastRef.current?.contains(ripple)) toastRef.current.removeChild(ripple);
-        }, 700);
-      }
-      if (toast.dismissOnClick) handleDismiss();
-    },
-    [toast.rippleEffect, toast.dismissOnClick, handleDismiss]
-  );
+    const handlePause = useCallback(() => {
+      if (toast.pauseOnHover) onPause(toast.id);
+    }, [onPause, toast.id, toast.pauseOnHover]);
 
-  // CSS custom properties for gradient variant
-  const variantStyles = useMemo<React.CSSProperties>(() => {
-    const styleClass = toast.visualStyle || defaultStyle;
-    if (styleClass !== 'gradient') return {};
-    const isDark = toastTheme === 'dark';
-    const map: Record<string, [string, string]> = {
-      success: [isDark ? 'rgba(5,95,70,.9)' : 'rgba(16,185,129,.8)', isDark ? 'rgba(4,120,87,.8)' : 'rgba(5,150,105,.7)'],
-      error: [isDark ? 'rgba(153,27,27,.9)' : 'rgba(239,68,68,.8)', isDark ? 'rgba(185,28,28,.8)' : 'rgba(220,38,38,.7)'],
-      warning: [isDark ? 'rgba(146,64,14,.9)' : 'rgba(245,158,11,.8)', isDark ? 'rgba(180,83,9,.8)' : 'rgba(217,119,6,.7)'],
-      info: [isDark ? 'rgba(30,64,175,.9)' : 'rgba(59,130,246,.8)', isDark ? 'rgba(29,78,216,.8)' : 'rgba(37,99,235,.7)'],
-    };
-    const [from, to] = map[toast.variant] ?? [
-      isDark ? 'rgba(55,65,81,.9)' : 'rgba(229,231,235,.8)',
-      isDark ? 'rgba(75,85,99,.8)' : 'rgba(209,213,219,.7)',
-    ];
-    return { '--toast-gradient-from': from, '--toast-gradient-to': to } as React.CSSProperties;
-  }, [toast.variant, toast.visualStyle, toastTheme, defaultStyle]);
+    const handleResume = useCallback(() => onResume(toast.id), [onResume, toast.id]);
 
-  const animationVariants = useMemo(() => {
-    if (toast.customAnimation) {
-      return {
-        initial: toast.customAnimation.initial as TargetAndTransition,
-        animate: toast.customAnimation.animate as TargetAndTransition,
-        exit: toast.customAnimation.exit as TargetAndTransition,
+    const handleRippleEffect = useCallback(
+      (e: React.MouseEvent<HTMLDivElement>) => {
+        if (toast.rippleEffect && toastRef.current) {
+          const rect = toastRef.current.getBoundingClientRect();
+          const ripple = document.createElement('div');
+          ripple.className = 'toast-ripple-element';
+          ripple.style.left = `${e.clientX - rect.left}px`;
+          ripple.style.top = `${e.clientY - rect.top}px`;
+          toastRef.current.appendChild(ripple);
+          setTimeout(() => {
+            if (toastRef.current?.contains(ripple)) toastRef.current.removeChild(ripple);
+          }, 700);
+        }
+        if (toast.dismissOnClick) handleDismiss();
+      },
+      [toast.rippleEffect, toast.dismissOnClick, handleDismiss]
+    );
+
+    // CSS custom properties for gradient variant
+    const variantStyles = useMemo<React.CSSProperties>(() => {
+      const styleClass = toast.visualStyle || defaultStyle;
+      if (styleClass !== 'gradient') return {};
+      const isDark = toastTheme === 'dark';
+      const map: Record<string, [string, string]> = {
+        success: [
+          isDark ? 'rgba(5,95,70,.9)' : 'rgba(16,185,129,.8)',
+          isDark ? 'rgba(4,120,87,.8)' : 'rgba(5,150,105,.7)',
+        ],
+        error: [
+          isDark ? 'rgba(153,27,27,.9)' : 'rgba(239,68,68,.8)',
+          isDark ? 'rgba(185,28,28,.8)' : 'rgba(220,38,38,.7)',
+        ],
+        warning: [
+          isDark ? 'rgba(146,64,14,.9)' : 'rgba(245,158,11,.8)',
+          isDark ? 'rgba(180,83,9,.8)' : 'rgba(217,119,6,.7)',
+        ],
+        info: [
+          isDark ? 'rgba(30,64,175,.9)' : 'rgba(59,130,246,.8)',
+          isDark ? 'rgba(29,78,216,.8)' : 'rgba(37,99,235,.7)',
+        ],
       };
-    }
+      const [from, to] = map[toast.variant] ?? [
+        isDark ? 'rgba(55,65,81,.9)' : 'rgba(229,231,235,.8)',
+        isDark ? 'rgba(75,85,99,.8)' : 'rgba(209,213,219,.7)',
+      ];
+      return { '--toast-gradient-from': from, '--toast-gradient-to': to } as React.CSSProperties;
+    }, [toast.variant, toast.visualStyle, toastTheme, defaultStyle]);
 
-    const anim = toast.animation || animation;
-    const pos = toast.position || position;
-    const isTop = pos.startsWith('top');
-    const isLeft = pos.endsWith('left');
-    const isRight = pos.endsWith('right');
+    const additionalClasses = useMemo(() => {
+      const classes: string[] = [];
+      if (toast.floating) classes.push('react-toast-floating');
+      if (toast.rippleEffect) classes.push('toast-ripple');
+      const vs = toast.visualStyle || defaultStyle;
+      if (vs === 'glass' || vs === 'gradient') classes.push('toast-soft-shadow');
+      return classes.join(' ');
+    }, [toast.floating, toast.rippleEffect, toast.visualStyle, defaultStyle]);
 
-    if (anim === 'none') return { initial: { opacity: 1 }, animate: { opacity: 1 }, exit: { opacity: 1 } };
-    if (anim === 'fade') return { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } };
+    const progressBarClasses = useMemo(() => {
+      return toast.progressBarStyle || 'default';
+    }, [toast.progressBarStyle]);
 
-    if (anim === 'bounce') {
-      const initial: TargetAndTransition = { opacity: 0, scale: 0.9 };
-      if (isTop) Object.assign(initial, { y: -80 });
-      else if (isLeft) Object.assign(initial, { x: -80 });
-      else if (isRight) Object.assign(initial, { x: 80 });
-      else Object.assign(initial, { y: 80 });
-      return {
-        initial,
-        animate: { opacity: 1, y: 0, x: 0, scale: 1, transition: { type: 'spring', stiffness: 350, damping: 25 } },
-        exit: { opacity: 0, scale: 0.9, transition: { duration: 0.2 } },
-      };
-    }
+    const swipeGesture = useSwipeGesture(toast.swipeToDismiss || false, handleDismiss);
 
-    if (anim === 'flip') {
-      return {
-        initial: { opacity: 0, rotateX: 90, perspective: 400 },
-        animate: { opacity: 1, rotateX: 0, perspective: 400, transition: { type: 'spring', stiffness: 300, damping: 25 } },
-        exit: { opacity: 0, rotateX: 90, perspective: 400, transition: { duration: 0.3 } },
-      };
-    }
-
-    if (anim === 'zoom') {
-      return {
-        initial: { opacity: 0, scale: 0.5 },
-        animate: { opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 400, damping: 30 } },
-        exit: { opacity: 0, scale: 0.5, transition: { duration: 0.2 } },
-      };
-    }
-
-    if (anim === 'elastic') {
-      const initial: TargetAndTransition = { opacity: 0, scale: 0.8 };
-      if (isTop) Object.assign(initial, { y: -30 });
-      else if (isLeft) Object.assign(initial, { x: -30 });
-      else if (isRight) Object.assign(initial, { x: 30 });
-      else Object.assign(initial, { y: 30 });
-      return {
-        initial,
-        animate: {
-          opacity: 1, y: 0, x: 0, scale: 1,
-          transition: { type: 'spring', stiffness: 500, damping: 20, mass: 0.8 },
-        },
-        exit: {
-          opacity: 0, scale: 0.85,
-          transition: { type: 'spring', stiffness: 600, damping: 35 },
-        },
-      };
-    }
-
-    // slide (default)
-    const initial: TargetAndTransition = { opacity: 0 };
-    const exit: TargetAndTransition = { opacity: 0 };
-    if (isTop) { Object.assign(initial, { y: -20 }); Object.assign(exit, { y: -20 }); }
-    else if (isLeft) { Object.assign(initial, { x: -20 }); Object.assign(exit, { x: -20 }); }
-    else if (isRight) { Object.assign(initial, { x: 20 }); Object.assign(exit, { x: 20 }); }
-    else { Object.assign(initial, { y: 20 }); Object.assign(exit, { y: 20 }); }
-
-    return { initial, animate: { opacity: 1, y: 0, x: 0 }, exit };
-  }, [toast.customAnimation, toast.animation, animation, toast.position, position]);
-
-  const additionalClasses = useMemo(() => {
-    const classes: string[] = [];
-    if (toast.floating) classes.push('react-toast-floating');
-    if (toast.rippleEffect) classes.push('toast-ripple');
-    const vs = toast.visualStyle || defaultStyle;
-    if (vs === 'glass' || vs === 'gradient') classes.push('toast-soft-shadow');
-    return classes.join(' ');
-  }, [toast.floating, toast.rippleEffect, toast.visualStyle, defaultStyle]);
-
-  const iconColor = useMemo(() => {
-    if (toast.variant === 'custom') return '';
-    if (!toast.variant || toast.variant === 'default') return toastTheme === 'dark' ? 'text-gray-300' : 'text-gray-500';
-    return 'text-white';
-  }, [toast.variant, toastTheme]);
-
-  const progressBarClasses = useMemo(() => {
-    if (toast.progressBarStyle) return toast.progressBarStyle;
-    if (toast.variant === 'custom') return 'bg-white/20';
-    if (!toast.variant || toast.variant === 'default')
-      return toastTheme === 'dark' ? 'bg-gray-600' : 'bg-gray-300';
-    return 'bg-white/30';
-  }, [toast.progressBarStyle, toast.variant, toastTheme]);
-
-  const swipeGesture = useSwipeGesture(toast.swipeToDismiss || false, handleDismiss);
-
-  return (
-    <motion.div
-      key={toast.id}
-      className="react-toast-item w-full"
-      initial={animationVariants.initial}
-      animate={animationVariants.animate}
-      exit={animationVariants.exit}
-      transition={{ duration: toast.updating ? 0.1 : 0.2 }}
-      layout
-    >
+    return (
       <div
-        ref={toastRef}
-        role={toast.variant === 'error' ? 'alert' : 'status'}
-        aria-live={toast.variant === 'error' ? 'assertive' : 'polite'}
-        className={`relative overflow-hidden shadow-lg rounded-lg react-toast w-full ${toast.className || ''} ${additionalClasses}`}
-        style={{ ...(toast.style || {}), ...variantStyles }}
-        onMouseEnter={handlePause}
-        onMouseLeave={handleResume}
-        onClick={handleRippleEffect}
-        onTouchStart={swipeGesture.handleTouchStart}
-        onTouchMove={swipeGesture.handleTouchMove}
-        onTouchEnd={swipeGesture.handleTouchEnd}
-        data-variant={toast.variant}
-        data-theme={toastTheme}
-        data-style={toast.visualStyle || defaultStyle}
-        data-progress-position={toast.progressBarPosition || 'bottom'}
-        data-testid={`toast-${toast.id}`}
-        tabIndex={0}
+        key={toast.id}
+        className="react-toast-item w-full"
+        data-animation={toast.animation || animation}
+        data-position={toast.position || position}
+        data-updating={toast.updating || undefined}
+        data-exiting={toast.exiting || undefined}
+        aria-hidden={toast.exiting || undefined}
+        style={{ animationDelay: toast.stagger ? `${toast.stagger}ms` : undefined }}
       >
-        {/* Progress bar — purely visual; the store timer owns dismissal timing */}
-        {toast.duration > 0 && (
-          <ProgressBar
-            duration={toast.duration}
-            isPaused={isPaused}
-            progressBarStyle={progressBarClasses}
-            progressBarColor={toast.progressBarColor}
-            progressBarThickness={toast.progressBarThickness}
-            progressBarPosition={toast.progressBarPosition}
-            progressAnimation={toast.progressAnimation}
-          />
-        )}
+        <div
+          ref={toastRef}
+          role="group"
+          aria-label={`${toast.variant} notification`}
+          className={`relative overflow-hidden shadow-lg rounded-lg react-toast w-full ${toast.className || ''} ${additionalClasses}`}
+          style={{ ...(toast.style || {}), ...variantStyles }}
+          onMouseEnter={handlePause}
+          onMouseLeave={handleResume}
+          onClick={handleRippleEffect}
+          onTouchStart={swipeGesture.handleTouchStart}
+          onTouchMove={swipeGesture.handleTouchMove}
+          onTouchEnd={swipeGesture.handleTouchEnd}
+          data-variant={toast.variant}
+          data-theme={toastTheme}
+          data-style={toast.visualStyle || defaultStyle}
+          data-progress-position={toast.progressBarPosition || 'bottom'}
+          data-testid={`toast-${toast.id}`}
+          tabIndex={0}
+        >
+          {/* Progress bar — purely visual; the store timer owns dismissal timing */}
+          {toast.duration > 0 && (
+            <ProgressBar
+              duration={toast.duration}
+              isPaused={isPaused}
+              progressBarStyle={progressBarClasses}
+              progressBarColor={toast.progressBarColor}
+              progressBarThickness={toast.progressBarThickness}
+              progressBarPosition={toast.progressBarPosition}
+              progressAnimation={toast.progressAnimation}
+            />
+          )}
 
-        <div className="p-4 toast-content">
-          {toast.variant === 'custom' && toast.component ? (
-            toast.component
-          ) : (
-            <div className="flex items-start">
-              {toast.emoji ? (
-                <div className="flex-shrink-0 mr-3 toast-emoji">{toast.emoji}</div>
-              ) : toast.icon ? (
-                <div className={`flex-shrink-0 mr-3 ${iconColor} toast-icon-container toast-icon-animated`}>
-                  {toast.icon}
-                </div>
-              ) : toast.iconString ? (
-                <div className={`flex-shrink-0 mr-3 ${iconColor} toast-icon-container toast-icon-animated`}>
-                  <SVGIcon svgString={toast.iconString} className={iconColor} />
-                </div>
-              ) : null}
-
-              <div className="flex-1">
-                {toast.title && <h4 className="font-medium mb-1">{toast.title}</h4>}
-                {toast.description && <div className="toast-description">{toast.description}</div>}
-                {toast.actions && toast.actions.length > 0 && (
-                  <div className="toast-actions">
-                    {toast.actions.map((action: ToastAction, i: number) => (
-                      <button
-                        key={i}
-                        data-variant={action.variant || 'primary'}
-                        className="toast-action-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          action.onClick(toast.id);
-                          if (action.closeOnClick !== false) onDismiss(toast.id);
-                        }}
-                      >
-                        {action.label}
-                      </button>
-                    ))}
+          <div className="p-4 toast-content">
+            {toast.variant === 'custom' && toast.component ? (
+              toast.component
+            ) : (
+              <div className="flex items-start">
+                {toast.emoji ? (
+                  <div className="flex-shrink-0 mr-3 toast-emoji">{toast.emoji}</div>
+                ) : toast.icon ? (
+                  <div className="flex-shrink-0 mr-3 toast-icon-container toast-icon-animated">
+                    {toast.icon}
                   </div>
+                ) : toast.iconString ? (
+                  <div className="flex-shrink-0 mr-3 toast-icon-container toast-icon-animated">
+                    <SVGIcon svgString={toast.iconString} />
+                  </div>
+                ) : null}
+
+                <div className="flex-1">
+                  {toast.title && <h4 className="font-medium mb-1">{toast.title}</h4>}
+                  {toast.description && (
+                    <div className="toast-description">{toast.description}</div>
+                  )}
+                  {toast.actions && toast.actions.length > 0 && (
+                    <div className="toast-actions">
+                      {toast.actions.map((action: ToastAction, i: number) => (
+                        <button
+                          key={i}
+                          data-variant={action.variant || 'primary'}
+                          className="toast-action-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            action.onClick(toast.id);
+                            if (action.closeOnClick !== false) onDismiss(toast.id);
+                          }}
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {toast.dismissible && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDismiss();
+                    }}
+                    className="react-toast-close"
+                    aria-label="Close notification"
+                    data-dismiss="toast"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
                 )}
               </div>
-
-              {toast.dismissible && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDismiss(); }}
-                  className="react-toast-close"
-                  aria-label="Close notification"
-                  data-dismiss="toast"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
-    </motion.div>
-  );
-});
+    );
+  }
+);
 ToastItem.displayName = 'ToastItem';
 
 // ─── ToastContainer ───────────────────────────────────────────────────────────
 
-const ToastContainer = memo(({
-  position,
-  toasts,
-  positionStyle,
-  onDismiss,
-  onPause,
-  onResume,
-  defaultAnimation,
-  toastTheme,
-  defaultStyle,
-  containerClassName,
-}: {
-  position: ToastPosition;
-  toasts: Toast[];
-  positionStyle: React.CSSProperties;
-  onDismiss: (id: string) => void;
-  onPause: (id: string) => void;
-  onResume: (id: string) => void;
-  defaultAnimation: ToastAnimation;
-  toastTheme: 'light' | 'dark';
-  defaultStyle: ToastStyle;
-  containerClassName?: string;
-}) => (
-  <div
-    className={`fixed flex flex-col z-50 react-toast-container ${containerClassName || ''}`}
-    data-position={position}
-    data-theme={toastTheme}
-    style={positionStyle}
-  >
-    <AnimatePresence mode="sync">
+const ToastContainer = memo(
+  ({
+    position,
+    toasts,
+    positionStyle,
+    onDismiss,
+    onPause,
+    onResume,
+    defaultAnimation,
+    toastTheme,
+    defaultStyle,
+    containerClassName,
+  }: {
+    position: ToastPosition;
+    toasts: Toast[];
+    positionStyle: React.CSSProperties;
+    onDismiss: (id: string) => void;
+    onPause: (id: string) => void;
+    onResume: (id: string) => void;
+    defaultAnimation: ToastAnimation;
+    toastTheme: 'light' | 'dark';
+    defaultStyle: ToastStyle;
+    containerClassName?: string;
+  }) => (
+    <div
+      className={`fixed flex flex-col z-50 react-toast-container ${containerClassName || ''}`}
+      data-position={position}
+      data-theme={toastTheme}
+      style={positionStyle}
+    >
       {toasts.map((t) => (
         <ToastItem
           key={t.id}
@@ -530,9 +519,9 @@ const ToastContainer = memo(({
           defaultStyle={defaultStyle}
         />
       ))}
-    </AnimatePresence>
-  </div>
-));
+    </div>
+  )
+);
 ToastContainer.displayName = 'ToastContainer';
 
 // ─── ToastPortal ──────────────────────────────────────────────────────────────
@@ -565,7 +554,11 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
     const width = window.innerWidth;
     screenWidthRef.current = width;
     const next =
-      width < DEVICE_BREAKPOINTS.mobile ? 'mobile' : width < DEVICE_BREAKPOINTS.tablet ? 'tablet' : 'desktop';
+      width < DEVICE_BREAKPOINTS.mobile
+        ? 'mobile'
+        : width < DEVICE_BREAKPOINTS.tablet
+          ? 'tablet'
+          : 'desktop';
     setDeviceType((prev) => (prev !== next ? next : prev));
   }, []);
 
@@ -608,7 +601,13 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
   const getPositionStyle = useCallback(
     (pos: ToastPosition): React.CSSProperties => {
       const width = getToastWidth();
-      const base: React.CSSProperties = { position: 'fixed', width: `${width}px`, display: 'flex', flexDirection: 'column', gap: '0.5rem' };
+      const base: React.CSSProperties = {
+        position: 'fixed',
+        width: `${width}px`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.5rem',
+      };
 
       if (deviceType === 'mobile') {
         const safe = Math.min(width, screenWidthRef.current - leftOffset - rightOffset);
@@ -617,13 +616,57 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
       }
 
       switch (pos) {
-        case 'top-left':    return { ...base, top: `${topOffset}px`, left: `${leftOffset}px`, alignItems: 'flex-start' };
-        case 'top-center':  return { ...base, top: `${topOffset}px`, left: '50%', transform: 'translateX(-50%)', alignItems: 'center' };
-        case 'top-right':   return { ...base, top: `${topOffset}px`, right: `${rightOffset}px`, alignItems: 'flex-end' };
-        case 'bottom-left': return { ...base, bottom: `${bottomOffset}px`, left: `${leftOffset}px`, alignItems: 'flex-start' };
-        case 'bottom-center': return { ...base, bottom: `${bottomOffset}px`, left: '50%', transform: 'translateX(-50%)', alignItems: 'center' };
-        case 'bottom-right': return { ...base, bottom: `${bottomOffset}px`, right: `${rightOffset}px`, alignItems: 'flex-end' };
-        default:            return { ...base, top: `${topOffset}px`, right: `${rightOffset}px`, alignItems: 'flex-end' };
+        case 'top-left':
+          return {
+            ...base,
+            top: `${topOffset}px`,
+            left: `${leftOffset}px`,
+            alignItems: 'flex-start',
+          };
+        case 'top-center':
+          return {
+            ...base,
+            top: `${topOffset}px`,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            alignItems: 'center',
+          };
+        case 'top-right':
+          return {
+            ...base,
+            top: `${topOffset}px`,
+            right: `${rightOffset}px`,
+            alignItems: 'flex-end',
+          };
+        case 'bottom-left':
+          return {
+            ...base,
+            bottom: `${bottomOffset}px`,
+            left: `${leftOffset}px`,
+            alignItems: 'flex-start',
+          };
+        case 'bottom-center':
+          return {
+            ...base,
+            bottom: `${bottomOffset}px`,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            alignItems: 'center',
+          };
+        case 'bottom-right':
+          return {
+            ...base,
+            bottom: `${bottomOffset}px`,
+            right: `${rightOffset}px`,
+            alignItems: 'flex-end',
+          };
+        default:
+          return {
+            ...base,
+            top: `${topOffset}px`,
+            right: `${rightOffset}px`,
+            alignItems: 'flex-end',
+          };
       }
     },
     [getToastWidth, deviceType, leftOffset, rightOffset, topOffset, bottomOffset]
@@ -631,12 +674,15 @@ const ToastPortal: React.FC<ToastPortalProps> = ({
 
   const toastsByPosition = useMemo(
     () =>
-      toasts.reduce<Record<ToastPosition, Toast[]>>((acc, t) => {
-        const pos = t.position || 'top-right';
-        if (!acc[pos]) acc[pos] = [];
-        acc[pos].push(t);
-        return acc;
-      }, {} as Record<ToastPosition, Toast[]>),
+      toasts.reduce<Record<ToastPosition, Toast[]>>(
+        (acc, t) => {
+          const pos = t.position || 'top-right';
+          if (!acc[pos]) acc[pos] = [];
+          acc[pos].push(t);
+          return acc;
+        },
+        {} as Record<ToastPosition, Toast[]>
+      ),
     [toasts]
   );
 

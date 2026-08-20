@@ -1,32 +1,41 @@
-name: Release
+name: Publish npm package
 
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'CHANGELOG.md'
-      - 'docs/**'
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - 'tsup.config.ts'
+      - '.github/workflows/auto-publish.yml'
   workflow_dispatch:
+    inputs:
+      release_type:
+        description: Version increment
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
 
 jobs:
-  release:
-    name: Semantic Release
+  publish:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      id-token: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # GH_TOKEN must be a Personal Access Token (classic) with `repo` scope.
-          # GITHUB_TOKEN cannot push tags/commits back in most GitHub configurations.
-          # Create one at: https://github.com/settings/tokens?type=legacy
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ secrets.GH_TOKEN || github.token }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -38,19 +47,58 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          # registry-url causes setup-node to write a project-level .npmrc:
-          #   //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
+      - name: Verify source
+        run: pnpm lint && pnpm typecheck && pnpm test && pnpm format:check
+
+      - name: Resolve next version from npm
+        id: version
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type || 'patch' }}
+        run: |
+          current=$(npm view react-toast-kit version)
+          next=$(node scripts/next-version.mjs "$current" "$RELEASE_TYPE")
+          pnpm install --lockfile-only
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Build publish artifact
         run: pnpm build
 
-      - name: Semantic Release
-        run: pnpm exec semantic-release
+      - name: Enforce bundle and performance budgets
+        run: pnpm benchmark
+
+      - name: Validate package contents
+        run: npm pack --dry-run
+
+      - name: Publish to npm
+        run: npm publish --access public --provenance
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Commit release metadata
+        env:
+          NEXT_VERSION: ${{ steps.version.outputs.next }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json pnpm-lock.yaml
+          git commit -m "chore(release): v${NEXT_VERSION} [skip ci]"
+          git tag -a "v${NEXT_VERSION}" -m "react-toast-kit v${NEXT_VERSION}"
+          git push origin HEAD:main --follow-tags
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          NEXT_VERSION: ${{ steps.version.outputs.next }}
+        run: gh release create "v${NEXT_VERSION}" --generate-notes --title "react-toast-kit v${NEXT_VERSION}"
+
+      - name: Refresh documentation deployment
+        if: ${{ secrets.GH_TOKEN != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: gh workflow run deploy.yml --repo danhnhdeveloper308/react-toast-kit-docs --ref main
