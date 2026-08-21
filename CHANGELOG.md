@@ -1,3 +1,10 @@
+## [1.0.13](https://github.com/danhnhdeveloper308/react-toast-kit/compare/v1.0.12...v1.0.13) (2026-08-21)
+
+
+### Bug Fixes
+
+* synchronize mobile progress timing ([0586fe4](https://github.com/danhnhdeveloper308/react-toast-kit/commit/0586fe4352e83ef7b6b429e9a68b111046f8fae2))
+
 ## [1.0.12](https://github.com/danhnhdeveloper308/react-toast-kit/compare/v1.0.11...v1.0.12) (2026-08-21)
 
 
