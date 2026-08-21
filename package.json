@@ -1,6 +1,6 @@
 {
   "name": "react-toast-kit",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "packageManager": "pnpm@11.6.0",
   "description": "Lightweight, accessible and fully typed toast notifications for React, Next.js, Remix and Vite",
   "type": "module",

@@ -1,3 +1,10 @@
+## [1.0.12](https://github.com/danhnhdeveloper308/react-toast-kit/compare/v1.0.11...v1.0.12) (2026-08-21)
+
+
+### Bug Fixes
+
+* align mobile progress timing and automate releases ([c69e708](https://github.com/danhnhdeveloper308/react-toast-kit/commit/c69e708bad1fcc1d2813ce6ffb91f09a1654bdde))
+
 ## Unreleased
 
 ### Breaking changes
