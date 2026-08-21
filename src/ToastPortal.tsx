@@ -181,6 +181,20 @@ const ProgressBar = memo(
     progressAnimation?: string;
   }) => {
     const isVertical = progressBarPosition === 'left' || progressBarPosition === 'right';
+    const fillRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const fill = fillRef.current;
+      if (!fill || !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+      // Consumer stylesheets commonly use a layered universal `!important`
+      // rule for reduced motion. Inline-important is required to preserve this
+      // functional countdown while the CSS switches it to low-motion steps.
+      fill.style.setProperty('animation-duration', `${duration}ms`, 'important');
+      return () => {
+        fill.style.removeProperty('animation-duration');
+      };
+    }, [duration]);
 
     const baseClass = `react-toast-progress${progressBarStyle ? ` ${progressBarStyle}` : ''}`;
 
@@ -198,6 +212,7 @@ const ProgressBar = memo(
         }
       >
         <div
+          ref={fillRef}
           className="react-toast-progress-fill"
           style={
             {
