@@ -193,6 +193,7 @@ const ProgressBar = memo(
               ? `${Math.max(3, progressBarThickness)}px`
               : undefined,
             '--rtk-progress-color': progressBarColor || undefined,
+            '--rtk-progress-duration': `${duration}ms`,
           } as ToastCSSProperties
         }
       >
@@ -206,6 +207,7 @@ const ProgressBar = memo(
               animationTimingFunction:
                 progressAnimation === 'spring' ? 'cubic-bezier(.2,.8,.2,1)' : progressAnimation,
               animationPlayState: isPaused ? 'paused' : 'running',
+              '--toast-progress-start': isVertical ? 'scaleY(1)' : 'scaleX(1)',
               '--toast-progress-axis': isVertical ? 'scaleY(0)' : 'scaleX(0)',
             } as ToastCSSProperties
           }
@@ -290,9 +292,13 @@ const ToastItem = memo(
 
     const handleDismiss = useCallback(() => onDismiss(toast.id), [onDismiss, toast.id]);
 
-    const handlePause = useCallback(() => {
-      if (toast.pauseOnHover) onPause(toast.id);
-    }, [onPause, toast.id, toast.pauseOnHover]);
+    const handlePause = useCallback(
+      (event: React.PointerEvent) => {
+        // Touch browsers may synthesize sticky mouse events without a mouseleave.
+        if (toast.pauseOnHover && event.pointerType !== 'touch') onPause(toast.id);
+      },
+      [onPause, toast.id, toast.pauseOnHover]
+    );
 
     const handleResume = useCallback(() => onResume(toast.id), [onResume, toast.id]);
 
@@ -376,8 +382,8 @@ const ToastItem = memo(
           aria-label={`${toast.variant} notification`}
           className={`relative overflow-hidden shadow-lg rounded-lg react-toast w-full ${toast.className || ''} ${additionalClasses}`}
           style={{ ...(toast.style || {}), ...variantStyles }}
-          onMouseEnter={handlePause}
-          onMouseLeave={handleResume}
+          onPointerEnter={handlePause}
+          onPointerLeave={handleResume}
           onClick={handleRippleEffect}
           onTouchStart={swipeGesture.handleTouchStart}
           onTouchMove={swipeGesture.handleTouchMove}

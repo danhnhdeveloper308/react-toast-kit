@@ -543,6 +543,7 @@
   overflow: visible;
   border-radius: inherit;
   background: var(--rtk-progress-color, var(--rtk-accent));
+  transform: var(--toast-progress-start, scaleX(1));
   animation: rtk-progress linear forwards;
   will-change: transform;
 }
@@ -569,6 +570,9 @@
   animation-name: rtk-progress-orb-vertical;
 }
 @keyframes rtk-progress {
+  from {
+    transform: var(--toast-progress-start, scaleX(1));
+  }
   to {
     transform: var(--toast-progress-axis, scaleX(0));
   }
@@ -705,9 +709,23 @@
   .react-toast,
   .react-toast::after,
   .react-toast-floating,
-  .toast-icon-animated,
-  .react-toast-progress-fill,
+  .toast-icon-animated {
+    animation: none !important;
+    transition: none !important;
+  }
+  /* Keep the functional countdown as a low-motion stepped indicator. The
+     selector also overrides broad app rules such as an important 0.01ms
+     animation duration without requiring consumer-side CSS exceptions. */
+  .react-toast-progress-fill {
+    animation-name: rtk-progress !important;
+    animation-duration: var(--rtk-progress-duration, 4000ms) !important;
+    animation-timing-function: steps(16, end) !important;
+    animation-fill-mode: forwards !important;
+    transition: none !important;
+    will-change: auto;
+  }
   .react-toast-progress-orb {
+    display: none;
     animation: none !important;
     transition: none !important;
   }
