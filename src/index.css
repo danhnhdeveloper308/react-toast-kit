@@ -718,13 +718,12 @@
     animation: none !important;
     transition: none !important;
   }
-  /* Keep the functional countdown as a low-motion stepped indicator. The
-     selector also overrides broad app rules such as an important 0.01ms
-     animation duration without requiring consumer-side CSS exceptions. */
+  /* The countdown remains functional because it communicates remaining time.
+     Other decorative motion is removed, including the travelling orb. */
   .react-toast-progress-fill {
     animation-name: rtk-progress !important;
     animation-duration: var(--rtk-progress-duration, 4000ms) !important;
-    animation-timing-function: steps(16, end) !important;
+    animation-timing-function: linear !important;
     animation-fill-mode: forwards !important;
     transition: none !important;
     will-change: auto;

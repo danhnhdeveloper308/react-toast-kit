@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useToastStore } from './toast';
 import type { Toast, ToastPosition, ToastAnimation, ToastStyle, ToastAction } from './toast';
 
-const { useEffect, useLayoutEffect, useState, memo, useRef, useCallback, useMemo } = React;
+const { useEffect, useState, memo, useRef, useCallback, useMemo } = React;
 
 type ToastCSSProperties = React.CSSProperties & Record<`--${string}`, string | number | undefined>;
 
@@ -181,65 +181,8 @@ const ProgressBar = memo(
     progressAnimation?: string;
   }) => {
     const isVertical = progressBarPosition === 'left' || progressBarPosition === 'right';
-    const fillRef = useRef<HTMLDivElement>(null);
-    const frameRef = useRef<number | null>(null);
-    const elapsedRef = useRef(0);
-    const startedRef = useRef(0);
-    const mobileClockRef = useRef(false);
-    const pausedRef = useRef(isPaused);
-    pausedRef.current = isPaused;
     const timingFunction =
       progressAnimation === 'spring' ? 'cubic-bezier(.2,.8,.2,1)' : progressAnimation || 'linear';
-
-    const startMobileClock = useCallback(() => {
-      const fill = fillRef.current;
-      if (!fill || frameRef.current !== null || elapsedRef.current >= duration) return;
-      startedRef.current = performance.now();
-      const tick = (now: number) => {
-        const elapsed = elapsedRef.current + now - startedRef.current;
-        const progress = Math.max(0, 1 - elapsed / duration);
-        fill.style.transform = isVertical ? `scaleY(${progress})` : `scaleX(${progress})`;
-        if (elapsed < duration && !pausedRef.current) {
-          frameRef.current = requestAnimationFrame(tick);
-        } else {
-          if (elapsed >= duration) elapsedRef.current = duration;
-          frameRef.current = null;
-        }
-      };
-      frameRef.current = requestAnimationFrame(tick);
-    }, [duration, isVertical]);
-
-    useLayoutEffect(() => {
-      const fill = fillRef.current;
-      if (!fill) return;
-
-      mobileClockRef.current = window.matchMedia?.('(hover: none)').matches ?? false;
-      if (!mobileClockRef.current) return;
-      fill.style.setProperty('animation', 'none', 'important');
-      fill.style.transform = isVertical ? 'scaleY(1)' : 'scaleX(1)';
-      elapsedRef.current = 0;
-      if (!pausedRef.current) startMobileClock();
-
-      return () => {
-        if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-        frameRef.current = null;
-        elapsedRef.current = 0;
-        mobileClockRef.current = false;
-        fill.style.removeProperty('animation');
-        fill.style.removeProperty('transform');
-      };
-    }, [isVertical, startMobileClock]);
-
-    useLayoutEffect(() => {
-      if (!mobileClockRef.current) return;
-      if (isPaused && frameRef.current !== null) {
-        elapsedRef.current += performance.now() - startedRef.current;
-        cancelAnimationFrame(frameRef.current);
-        frameRef.current = null;
-      } else if (!isPaused) {
-        startMobileClock();
-      }
-    }, [isPaused, startMobileClock]);
 
     const baseClass = `react-toast-progress${progressBarStyle ? ` ${progressBarStyle}` : ''}`;
 
@@ -257,7 +200,6 @@ const ProgressBar = memo(
         }
       >
         <div
-          ref={fillRef}
           className="react-toast-progress-fill"
           style={
             {

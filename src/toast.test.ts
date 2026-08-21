@@ -86,7 +86,7 @@ describe('visual contract', () => {
 
   it('keeps the countdown functional with reduced motion enabled', () => {
     expect(css).toContain('animation-duration: var(--rtk-progress-duration, 4000ms) !important');
-    expect(css).toContain('animation-timing-function: steps(16, end) !important');
+    expect(css).toContain('animation-timing-function: linear !important');
     expect(css).toContain('--toast-progress-start');
   });
 });
