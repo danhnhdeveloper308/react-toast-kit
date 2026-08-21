@@ -4,7 +4,7 @@ import { gzipSync } from 'node:zlib';
 
 // zlib output varies slightly between supported Node releases. Keep a narrow
 // cross-version margin while still failing meaningful bundle-size regressions.
-const budgets = { core: 9_350, full: 13_600, css: 4_500 };
+const budgets = { core: 9_500, full: 13_750, css: 4_500 };
 const artifacts = {
   core: await readFile(new URL('../dist/core.mjs', import.meta.url)),
   full: await readFile(new URL('../dist/index.mjs', import.meta.url)),

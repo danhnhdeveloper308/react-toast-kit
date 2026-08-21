@@ -182,50 +182,64 @@ const ProgressBar = memo(
   }) => {
     const isVertical = progressBarPosition === 'left' || progressBarPosition === 'right';
     const fillRef = useRef<HTMLDivElement>(null);
-    const animationRef = useRef<Animation | null>(null);
+    const frameRef = useRef<number | null>(null);
+    const elapsedRef = useRef(0);
+    const startedRef = useRef(0);
+    const mobileClockRef = useRef(false);
+    const pausedRef = useRef(isPaused);
+    pausedRef.current = isPaused;
     const timingFunction =
       progressAnimation === 'spring' ? 'cubic-bezier(.2,.8,.2,1)' : progressAnimation || 'linear';
+
+    const startMobileClock = useCallback(() => {
+      const fill = fillRef.current;
+      if (!fill || frameRef.current !== null || elapsedRef.current >= duration) return;
+      startedRef.current = performance.now();
+      const tick = (now: number) => {
+        const elapsed = elapsedRef.current + now - startedRef.current;
+        const progress = Math.max(0, 1 - elapsed / duration);
+        fill.style.transform = isVertical ? `scaleY(${progress})` : `scaleX(${progress})`;
+        if (elapsed < duration && !pausedRef.current) {
+          frameRef.current = requestAnimationFrame(tick);
+        } else {
+          if (elapsed >= duration) elapsedRef.current = duration;
+          frameRef.current = null;
+        }
+      };
+      frameRef.current = requestAnimationFrame(tick);
+    }, [duration, isVertical]);
 
     useLayoutEffect(() => {
       const fill = fillRef.current;
       if (!fill) return;
 
-      if (typeof fill.animate !== 'function') {
-        // Fallback for legacy browsers. Inline-important protects the timer
-        // from broad consumer rules such as a 0.01ms reduced-motion duration.
-        fill.style.setProperty('animation-duration', `${duration}ms`, 'important');
-        fill.style.setProperty('animation-timing-function', timingFunction, 'important');
-        return () => {
-          fill.style.removeProperty('animation-duration');
-          fill.style.removeProperty('animation-timing-function');
-        };
-      }
-
-      // WAAPI timing is independent from the CSS cascade, so consumer
-      // `!important` rules cannot shorten the countdown on mobile devices.
+      mobileClockRef.current = window.matchMedia?.('(hover: none)').matches ?? false;
+      if (!mobileClockRef.current) return;
       fill.style.setProperty('animation', 'none', 'important');
-      const animation = fill.animate(
-        [
-          { transform: isVertical ? 'scaleY(1)' : 'scaleX(1)' },
-          { transform: isVertical ? 'scaleY(0)' : 'scaleX(0)' },
-        ],
-        { duration, easing: timingFunction, fill: 'forwards' }
-      );
-      animationRef.current = animation;
+      fill.style.transform = isVertical ? 'scaleY(1)' : 'scaleX(1)';
+      elapsedRef.current = 0;
+      if (!pausedRef.current) startMobileClock();
 
       return () => {
-        animation.cancel();
-        animationRef.current = null;
+        if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+        elapsedRef.current = 0;
+        mobileClockRef.current = false;
         fill.style.removeProperty('animation');
+        fill.style.removeProperty('transform');
       };
-    }, [duration, isVertical, timingFunction]);
+    }, [isVertical, startMobileClock]);
 
     useLayoutEffect(() => {
-      const animation = animationRef.current;
-      if (!animation) return;
-      if (isPaused) animation.pause();
-      else animation.play();
-    }, [isPaused]);
+      if (!mobileClockRef.current) return;
+      if (isPaused && frameRef.current !== null) {
+        elapsedRef.current += performance.now() - startedRef.current;
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      } else if (!isPaused) {
+        startMobileClock();
+      }
+    }, [isPaused, startMobileClock]);
 
     const baseClass = `react-toast-progress${progressBarStyle ? ` ${progressBarStyle}` : ''}`;
 
@@ -338,8 +352,12 @@ const ToastItem = memo(
 
     const handlePause = useCallback(
       (event: React.PointerEvent) => {
-        // Touch browsers may synthesize sticky mouse events without a mouseleave.
-        if (toast.pauseOnHover && event.pointerType !== 'touch') onPause(toast.id);
+        // Mobile browsers may synthesize a sticky mouse/empty pointer event
+        // without a matching leave. Pause only for a real fine-hover mouse.
+        const hasMouseHover =
+          event.pointerType === 'mouse' &&
+          window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
+        if (toast.pauseOnHover && hasMouseHover) onPause(toast.id);
       },
       [onPause, toast.id, toast.pauseOnHover]
     );
