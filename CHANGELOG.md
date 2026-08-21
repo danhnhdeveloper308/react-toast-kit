@@ -1,3 +1,10 @@
+## [1.0.15](https://github.com/danhnhdeveloper308/react-toast-kit/compare/v1.0.14...v1.0.15) (2026-08-21)
+
+
+### Bug Fixes
+
+* align toast progress timing across devices ([d44164c](https://github.com/danhnhdeveloper308/react-toast-kit/commit/d44164c9298cda05c53cbf18b034163f9a05d3e2))
+
 ## [1.0.14](https://github.com/danhnhdeveloper308/react-toast-kit/compare/v1.0.13...v1.0.14) (2026-08-21)
 
 
