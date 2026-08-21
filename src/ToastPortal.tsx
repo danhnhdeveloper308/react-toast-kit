@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useToastStore } from './toast';
 import type { Toast, ToastPosition, ToastAnimation, ToastStyle, ToastAction } from './toast';
 
-const { useEffect, useState, memo, useRef, useCallback, useMemo } = React;
+const { useEffect, useLayoutEffect, useState, memo, useRef, useCallback, useMemo } = React;
 
 type ToastCSSProperties = React.CSSProperties & Record<`--${string}`, string | number | undefined>;
 
@@ -182,19 +182,23 @@ const ProgressBar = memo(
   }) => {
     const isVertical = progressBarPosition === 'left' || progressBarPosition === 'right';
     const fillRef = useRef<HTMLDivElement>(null);
+    const timingFunction =
+      progressAnimation === 'spring' ? 'cubic-bezier(.2,.8,.2,1)' : progressAnimation || 'linear';
 
-    useEffect(() => {
+    useLayoutEffect(() => {
       const fill = fillRef.current;
       if (!fill || !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
 
       // Consumer stylesheets commonly use a layered universal `!important`
-      // rule for reduced motion. Inline-important is required to preserve this
-      // functional countdown while the CSS switches it to low-motion steps.
+      // rule for reduced motion. Inline-important is required to preserve the
+      // configured countdown duration and easing before the first paint.
       fill.style.setProperty('animation-duration', `${duration}ms`, 'important');
+      fill.style.setProperty('animation-timing-function', timingFunction, 'important');
       return () => {
         fill.style.removeProperty('animation-duration');
+        fill.style.removeProperty('animation-timing-function');
       };
-    }, [duration]);
+    }, [duration, timingFunction]);
 
     const baseClass = `react-toast-progress${progressBarStyle ? ` ${progressBarStyle}` : ''}`;
 
@@ -219,8 +223,7 @@ const ProgressBar = memo(
               backgroundColor: progressBarColor || undefined,
               transformOrigin: isVertical ? 'top center' : 'left center',
               animationDuration: `${duration}ms`,
-              animationTimingFunction:
-                progressAnimation === 'spring' ? 'cubic-bezier(.2,.8,.2,1)' : progressAnimation,
+              animationTimingFunction: timingFunction,
               animationPlayState: isPaused ? 'paused' : 'running',
               '--toast-progress-start': isVertical ? 'scaleY(1)' : 'scaleX(1)',
               '--toast-progress-axis': isVertical ? 'scaleY(0)' : 'scaleX(0)',
@@ -231,8 +234,7 @@ const ProgressBar = memo(
           className="react-toast-progress-orb"
           style={{
             animationDuration: `${duration}ms`,
-            animationTimingFunction:
-              progressAnimation === 'spring' ? 'cubic-bezier(.2,.8,.2,1)' : progressAnimation,
+            animationTimingFunction: timingFunction,
             animationPlayState: isPaused ? 'paused' : 'running',
           }}
         />

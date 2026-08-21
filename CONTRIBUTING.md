@@ -53,25 +53,26 @@ This uses tsup to bundle the library in both CommonJS and ESM formats with type 
 
 ## Commit Message Format
 
-We follow a simple commit message format:
+We use Conventional Commits. Release versions are derived automatically from
+the consumer impact of commits merged into `main`:
 
-- feat: A new feature
-- fix: A bug fix
-- docs: Documentation only changes
-- style: Changes that don't affect the code's meaning (formatting, etc.)
-- refactor: Code change that neither fixes a bug nor adds a feature
-- perf: Change that improves performance
-- chore: Changes to the build process or auxiliary tools
+- `fix:` and `perf:` create a patch release (`1.0.11` → `1.0.12`)
+- `feat:` creates a minor release (`1.0.11` → `1.1.0`)
+- `feat!:`/`fix!:` or a `BREAKING CHANGE:` footer creates a major release
+- `docs:`, `style:`, `test:`, `refactor:`, `build:`, `ci:` and `chore:` do not
+  publish by themselves
 
 Example: `fix: resolve issue with toast position in Safari`
 
 ## Release Process
 
-Releases are handled through GitHub Actions. The maintainers will:
+Releases are handled by semantic-release through GitHub Actions:
 
 1. Merge approved PRs into main
-2. Trigger a new release using semantic versioning
-3. The CI/CD pipeline will automatically publish to npm
+2. CI validates formatting, types, tests, builds and bundle budgets
+3. Conventional Commits determine whether the next release is patch, minor or major
+4. The pipeline updates the changelog, publishes through npm trusted publishing,
+   creates the Git tag and GitHub Release, and deploys the documentation
 
 ## Questions?
 

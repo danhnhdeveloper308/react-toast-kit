@@ -8,16 +8,12 @@ on:
       - 'scripts/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - 'tsconfig.json'
       - 'tsup.config.ts'
+      - '.releaserc.json'
       - '.github/workflows/auto-publish.yml'
   workflow_dispatch:
-    inputs:
-      release_type:
-        description: Version increment
-        type: choice
-        options: [patch, minor, major]
-        default: patch
 
 concurrency:
   group: npm-release
@@ -42,14 +38,13 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -57,16 +52,16 @@ jobs:
       - name: Verify source
         run: pnpm lint && pnpm typecheck && pnpm test && pnpm format:check
 
-      - name: Resolve next version from npm
-        id: version
-        env:
-          RELEASE_TYPE: ${{ inputs.release_type || 'patch' }}
+      - name: Reconcile existing npm release tag
         run: |
           current=$(npm view react-toast-kit version)
-          next=$(node scripts/next-version.mjs "$current" "$RELEASE_TYPE")
-          pnpm install --lockfile-only
-          echo "current=$current" >> "$GITHUB_OUTPUT"
-          echo "next=$next" >> "$GITHUB_OUTPUT"
+          tag="v${current}"
+          if ! git rev-parse --verify "refs/tags/${tag}" >/dev/null 2>&1; then
+            git_head=$(npm view "react-toast-kit@${current}" gitHead)
+            git merge-base --is-ancestor "$git_head" HEAD
+            git tag -a "$tag" "$git_head" -m "react-toast-kit ${tag}"
+            git push origin "$tag"
+          fi
 
       - name: Build publish artifact
         run: pnpm build
@@ -77,25 +72,10 @@ jobs:
       - name: Validate package contents
         run: npm pack --dry-run
 
-      - name: Publish to npm
-        run: npm publish --access public
-
-      - name: Commit release metadata
+      - name: Analyze commits and publish release
         env:
-          NEXT_VERSION: ${{ steps.version.outputs.next }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json pnpm-lock.yaml
-          git commit -m "chore(release): v${NEXT_VERSION} [skip ci]"
-          git tag -a "v${NEXT_VERSION}" -m "react-toast-kit v${NEXT_VERSION}"
-          git push origin HEAD:main --follow-tags
-
-      - name: Create GitHub release
-        env:
-          GH_TOKEN: ${{ env.RELEASE_GH_TOKEN || github.token }}
-          NEXT_VERSION: ${{ steps.version.outputs.next }}
-        run: gh release create "v${NEXT_VERSION}" --generate-notes --title "react-toast-kit v${NEXT_VERSION}"
+          GITHUB_TOKEN: ${{ env.RELEASE_GH_TOKEN || github.token }}
+        run: pnpm release
 
       - name: Refresh documentation deployment
         if: env.RELEASE_GH_TOKEN != ''
