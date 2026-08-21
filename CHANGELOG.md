@@ -1,3 +1,10 @@
+## [1.0.14](https://github.com/danhnhdeveloper308/react-toast-kit/compare/v1.0.13...v1.0.14) (2026-08-21)
+
+
+### Bug Fixes
+
+* prevent mobile toast timers from stalling ([6f63c0d](https://github.com/danhnhdeveloper308/react-toast-kit/commit/6f63c0d301d2343ae38ac2ed76173abe2eb5255f))
+
 ## [1.0.13](https://github.com/danhnhdeveloper308/react-toast-kit/compare/v1.0.12...v1.0.13) (2026-08-21)
 
 
