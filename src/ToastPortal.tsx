@@ -182,23 +182,50 @@ const ProgressBar = memo(
   }) => {
     const isVertical = progressBarPosition === 'left' || progressBarPosition === 'right';
     const fillRef = useRef<HTMLDivElement>(null);
+    const animationRef = useRef<Animation | null>(null);
     const timingFunction =
       progressAnimation === 'spring' ? 'cubic-bezier(.2,.8,.2,1)' : progressAnimation || 'linear';
 
     useLayoutEffect(() => {
       const fill = fillRef.current;
-      if (!fill || !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+      if (!fill) return;
 
-      // Consumer stylesheets commonly use a layered universal `!important`
-      // rule for reduced motion. Inline-important is required to preserve the
-      // configured countdown duration and easing before the first paint.
-      fill.style.setProperty('animation-duration', `${duration}ms`, 'important');
-      fill.style.setProperty('animation-timing-function', timingFunction, 'important');
+      if (typeof fill.animate !== 'function') {
+        // Fallback for legacy browsers. Inline-important protects the timer
+        // from broad consumer rules such as a 0.01ms reduced-motion duration.
+        fill.style.setProperty('animation-duration', `${duration}ms`, 'important');
+        fill.style.setProperty('animation-timing-function', timingFunction, 'important');
+        return () => {
+          fill.style.removeProperty('animation-duration');
+          fill.style.removeProperty('animation-timing-function');
+        };
+      }
+
+      // WAAPI timing is independent from the CSS cascade, so consumer
+      // `!important` rules cannot shorten the countdown on mobile devices.
+      fill.style.setProperty('animation', 'none', 'important');
+      const animation = fill.animate(
+        [
+          { transform: isVertical ? 'scaleY(1)' : 'scaleX(1)' },
+          { transform: isVertical ? 'scaleY(0)' : 'scaleX(0)' },
+        ],
+        { duration, easing: timingFunction, fill: 'forwards' }
+      );
+      animationRef.current = animation;
+
       return () => {
-        fill.style.removeProperty('animation-duration');
-        fill.style.removeProperty('animation-timing-function');
+        animation.cancel();
+        animationRef.current = null;
+        fill.style.removeProperty('animation');
       };
-    }, [duration, timingFunction]);
+    }, [duration, isVertical, timingFunction]);
+
+    useLayoutEffect(() => {
+      const animation = animationRef.current;
+      if (!animation) return;
+      if (isPaused) animation.pause();
+      else animation.play();
+    }, [isPaused]);
 
     const baseClass = `react-toast-progress${progressBarStyle ? ` ${progressBarStyle}` : ''}`;
 

@@ -704,6 +704,11 @@
     height: 32px;
   }
 }
+@media (hover: none) {
+  .react-toast-progress-orb {
+    display: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .react-toast-item,
   .react-toast,
