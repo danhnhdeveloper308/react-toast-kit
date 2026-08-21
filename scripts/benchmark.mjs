@@ -2,7 +2,9 @@ import { readFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
 import { gzipSync } from 'node:zlib';
 
-const budgets = { core: 9_200, full: 13_300, css: 4_500 };
+// zlib output varies slightly between supported Node releases. Keep a narrow
+// cross-version margin while still failing meaningful bundle-size regressions.
+const budgets = { core: 9_200, full: 13_400, css: 4_500 };
 const artifacts = {
   core: await readFile(new URL('../dist/core.mjs', import.meta.url)),
   full: await readFile(new URL('../dist/index.mjs', import.meta.url)),
