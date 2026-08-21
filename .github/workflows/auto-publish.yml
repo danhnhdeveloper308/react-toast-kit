@@ -12,6 +12,7 @@ on:
       - 'tsconfig.json'
       - 'tsup.config.ts'
       - '.releaserc.json'
+      - '.prettierignore'
       - '.github/workflows/auto-publish.yml'
   workflow_dispatch:
 
